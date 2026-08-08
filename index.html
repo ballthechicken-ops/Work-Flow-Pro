@@ -660,8 +660,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 /* ══════════════════ SUPABASE CONFIG — แก้ 2 บรรทัดนี้ตามโปรเจกต์ของคุณ ══════════════════ */
-const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+const SUPABASE_URL = 'rbequdxfwrtdqymfwdvi';
+const SUPABASE_ANON_KEY = 'sb_publishable_zMedYJD4H8eHoHkzBao62g_adlN-NFT';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ══════════════════ STATE ══════════════════ */
@@ -824,7 +824,7 @@ async function _dispatchAPI(action, payload) {
     case 'UPDATE_USER': {
       const { id, ...rest } = payload;
       if (rest.password) {
-        return { success:false, error: currentLang==='th' ? 'เปลี่ยนรหัสผ่านของผู้ใช้อื่นทำได้ที่ Supabase Dashboard > Authentication > Users เท่านั้น' : 'Resetting another user\\'s password must be done via Supabase Dashboard' };
+        return { success:false, error: currentLang==='th' ? 'เปลี่ยนรหัสผ่านของผู้ใช้อื่นทำได้ที่ Supabase Dashboard > Authentication > Users เท่านั้น' : "Resetting another user's password must be done via Supabase Dashboard" };
       }
       const upd = {};
       if (rest.fullName !== undefined) upd.full_name = rest.fullName;
