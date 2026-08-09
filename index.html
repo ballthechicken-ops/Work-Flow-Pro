@@ -9,11 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --primary: #4338CA; --primary-light: #4F46E5; --primary-dark: #3730A3;
-      --secondary: #6366F1; --cyan: #818CF8;
-      --success: #059669; --warning: #F59E0B; --danger: #EF4444;
-      --bg: #F5F3FF; --bg-card: #FFFFFF; --text-main: #064E3B; --text-sub: #6B7280; --text-light: #9CA3AF;
-      --border: #E0E7FF; --sidebar-w: 260px; --topbar-h: 60px; --radius: 14px;
+      --primary: #0F766E; --primary-light: #14B8A6; --primary-dark: #115E59;
+      --secondary: #0891B2; --cyan: #22D3EE;
+      --success: #16A34A; --warning: #D97706; --danger: #DC2626;
+      --bg: #F0FDFA; --bg-card: #FFFFFF; --text-main: #134E4A; --text-sub: #6B7280; --text-light: #9CA3AF;
+      --border: #CCFBF1; --sidebar-w: 260px; --topbar-h: 60px; --radius: 14px;
       --shadow: 0 4px 24px rgba(6,95,70,0.10); --shadow-card: 0 2px 12px rgba(6,95,70,0.07);
       --transition: 0.22s cubic-bezier(.4,0,.2,1);
     }
@@ -38,7 +38,8 @@
     @keyframes shadowScale { from { transform: scale(1); opacity: 1; } to { transform: scale(0.5); opacity: 0.3; } }
     @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-    #login-page { display: none; min-height: 100vh; background: linear-gradient(145deg, #0f2460 0%, #1E3A8A 45%, #06B6D4 100%); align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
+    #login-page { display: none; min-height: 100vh; background: linear-gradient(145deg, #0F172A 0%, #115E59 45%, #14B8A6 100%); align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
+    .version-badge { display: inline-block; background: linear-gradient(90deg,#F59E0B,#DC2626); color: #fff; font-size: .66rem; font-weight: 800; padding: 2px 9px; border-radius: 20px; letter-spacing: .04em; margin-left: 8px; vertical-align: middle; box-shadow: 0 2px 6px rgba(220,38,38,.35); }
     #login-page.active { display: flex; }
     .login-card { background: #fff; border-radius: 24px; padding: 40px 36px; width: 100%; max-width: 420px; box-shadow: 0 32px 80px rgba(10,30,100,.35); animation: fadeUp .45s ease; }
     @keyframes fadeUp { from { opacity:0; transform: translateY(28px); } to { opacity:1; transform:none; } }
@@ -127,6 +128,12 @@
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #f8fafc; }
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,36,96,.4); backdrop-filter:blur(4px); z-index:1000; align-items:flex-end; justify-content:center; padding:0; }
+    .modal-overlay.modal-center { align-items:center; padding:16px; }
+    .modal-overlay.modal-center .modal { border-radius:20px; max-width:420px; animation: popIn .35s cubic-bezier(.34,1.56,.64,1); }
+    .urgent-alert-icon { font-size:2.6rem; text-align:center; margin-bottom:6px; }
+    .urgent-alert-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--bg); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:background var(--transition); }
+    .urgent-alert-item:hover { background:#e6fffa; }
+    .urgent-alert-count { width:34px; height:34px; border-radius:50%; background:var(--danger); color:#fff; font-weight:800; font-size:.95rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .modal-overlay.open { display:flex; }
     .modal { background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:100vw; max-height:92vh; overflow-y:auto; box-shadow:0 -8px 40px rgba(0,0,0,.2); animation: slideUp .3s ease; }
     @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -340,7 +347,7 @@
   <div class="login-card">
     <div class="login-logo">
       <div class="logo-icon">📋</div>
-      <div><div class="logo-text">WorkFlow Pro</div><div class="logo-sub" id="login-sub-text">ระบบบริหารจัดการงานและตารางเวร</div></div>
+      <div><div class="logo-text">WorkFlow Pro<span class="version-badge">NEW v3.0</span></div><div class="logo-sub" id="login-sub-text">ระบบบริหารจัดการงานและทีมงาน</div></div>
     </div>
     <div class="login-title" id="login-title">เข้าสู่ระบบ</div>
     <div class="login-sub" id="login-sub">กรุณากรอกข้อมูลเพื่อเข้าใช้งานระบบ</div>
@@ -447,30 +454,18 @@
   </div>
 </div>
 
+<div class="modal-overlay modal-center" id="modal-urgent-alert">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔔 สรุปเรื่องด่วนของคุณ</div><button class="modal-close" onclick="closeModal('modal-urgent-alert')">✕</button></div>
+    <div class="modal-body" id="urgent-alert-body"></div>
+    <div class="modal-footer"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeModal('modal-urgent-alert')">รับทราบ</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="lightbox-modal" style="z-index: 10000; align-items: center;" onclick="closeLightbox()">
   <div style="position: relative; max-width: 90vw; max-height: 90vh;">
     <img id="lightbox-img" src="" style="max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);" />
     <button style="position: absolute; top: -12px; right: -12px; background: #EF4444; color: white; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; border: 2px solid white; cursor: pointer;" onclick="closeLightbox()">✕</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-shift">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">📅 เพิ่ม / แก้ไขตารางเวร</div><button class="modal-close" onclick="closeModal('modal-shift')">✕</button></div>
-    <div class="modal-body">
-      <input type="hidden" id="shift-edit-id" />
-      <div class="input-row">
-        <div class="input-group"><label class="input-label">วันที่</label><input type="date" class="input-field" id="shift-date" /></div>
-        <div class="input-group"><label class="input-label">ประเภท</label>
-          <select class="select-field" id="shift-type">
-            <option value="Shift">เวรปฏิบัติงาน</option><option value="Holiday">วันหยุด</option><option value="Working">วันทำงานพิเศษ</option><option value="CompanyEvent">📢 ประกาศบริษัท (ทุกคนเห็น)</option>
-          </select>
-        </div>
-      </div>
-      <div class="input-group"><label class="input-label">พนักงาน</label><select class="select-field" id="shift-staff"></select></div>
-      <div class="input-group"><label class="input-label">หมายเหตุ</label><input type="text" class="input-field" id="shift-desc" /></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-shift')">ยกเลิก</button><button class="btn btn-primary" onclick="saveShift()">💾 บันทึก</button></div>
   </div>
 </div>
 
@@ -502,7 +497,7 @@
         <div class="input-group"><label class="input-label">สิทธิ์</label>
           <select class="select-field" id="user-role"><option value="User">User</option><option value="Manager">หัวหน้าทีม</option><option value="Admin">Admin</option></select>
         </div>
-        <div class="input-group"><label class="input-label">หัวหน้างาน</label><select class="select-field" id="user-manager"></select></div>
+        <div class="input-group"><label class="input-label">หัวหน้างาน (เลือกได้มากกว่า 1 คน)</label><div id="user-manager-list" style="max-height:160px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;"></div></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-user')">ยกเลิก</button><button class="btn btn-primary" onclick="saveUser()">💾 บันทึก</button></div>
@@ -511,24 +506,22 @@
 
 <div class="modal-overlay" id="modal-reward">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">🎁 ตั้งค่ารางวัล</div><button class="modal-close" onclick="closeModal('modal-reward')">✕</button></div>
+    <div class="modal-header"><div class="modal-title">🎁 ตั้งรอบรางวัลใหม่</div><button class="modal-close" onclick="closeModal('modal-reward')">✕</button></div>
     <div class="modal-body">
+      <div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;padding:10px 14px;font-size:.8rem;color:#065F46;margin-bottom:14px">
+        💡 รอบรางวัลนี้เป็นคนละส่วนกับ KPI ประจำเดือน — ตั้งวันเริ่ม/สิ้นสุดเองได้อิสระ เปิดได้พร้อมกันหลายรอบ พนักงานในทีมของคุณจะสะสมคะแนนเฉพาะช่วงที่กำหนดนี้ จนกว่าคุณจะกด "ตัดรอบ"
+      </div>
       <div class="input-row">
         <div class="input-group"><label class="input-label">ชื่อรางวัล *</label><input type="text" class="input-field" id="reward-name" /></div>
-        <div class="input-group"><label class="input-label">คะแนนขั้นต่ำ</label><input type="number" class="input-field" id="reward-target-pts" value="400" inputmode="numeric" /></div>
+        <div class="input-group"><label class="input-label">คะแนนเป้าหมาย</label><input type="number" class="input-field" id="reward-target-pts" value="500" inputmode="numeric" /></div>
       </div>
       <div class="input-group"><label class="input-label">รายละเอียด</label><textarea class="input-field" id="reward-detail" rows="2"></textarea></div>
-      <div class="input-group"><label class="input-label">ช่วงเวลา</label><select class="select-field" id="reward-period"><option value="monthly">ประจำเดือน</option><option value="weekly">ประจำสัปดาห์</option></select></div>
+      <div class="input-row">
+        <div class="input-group"><label class="input-label">วันเริ่มรอบ</label><input type="date" class="input-field" id="reward-start-date" /></div>
+        <div class="input-group"><label class="input-label">วันสิ้นสุดรอบ</label><input type="date" class="input-field" id="reward-end-date" /></div>
+      </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-reward')">ยกเลิก</button><button class="btn btn-primary" onclick="saveReward()">💾 บันทึก</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-shift-detail">
-  <div class="modal" style="max-width:480px; border-radius:20px 20px 0 0;">
-    <div class="modal-header"><div class="modal-title">📅 รายละเอียดวัน</div><button class="modal-close" onclick="closeModal('modal-shift-detail')">✕</button></div>
-    <div class="modal-body" id="shift-detail-body"></div>
-    <div class="modal-footer" id="shift-detail-footer"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-reward')">ยกเลิก</button><button class="btn btn-primary" onclick="saveReward()">💾 เริ่มรอบนี้</button></div>
   </div>
 </div>
 
@@ -606,18 +599,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-ot">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">📝 บันทึก OT / มาทำงาน</div><button class="modal-close" onclick="closeModal('modal-ot')">✕</button></div>
-    <div class="modal-body">
-      <div class="input-group"><label class="input-label">วันที่</label><input type="date" class="input-field" id="ot-date" /></div>
-      <div class="input-group"><label class="input-label">ประเภท</label><select class="select-field" id="ot-type"><option value="OT">OT</option><option value="มาทำงาน">มาทำงาน</option><option value="อบรม">อบรม</option><option value="อื่นๆ">อื่นๆ</option></select></div>
-      <div class="input-group"><label class="input-label">หมายเหตุ</label><input type="text" class="input-field" id="ot-desc" /></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-ot')">ยกเลิก</button><button class="btn btn-primary" onclick="saveOT()">💾 บันทึก</button></div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="modal-approve-points">
   <div class="modal" style="max-width: 420px;">
     <div class="modal-header"><div class="modal-title">👍 อนุมัติงานพร้อมให้คะแนน</div><button class="modal-close" onclick="closeModal('modal-approve-points')">✕</button></div>
@@ -672,10 +653,8 @@ let currentLang = localStorage.getItem('wf_lang') || 'th';
 let taskFilter  = 'all';
 let tasksCache  = [];
 let usersCache  = [];
-let shiftsCache = [];
+
 let categoriesCache = [];
-let calYear  = new Date().getFullYear();
-let calMonth = new Date().getMonth();
 let taskCurrentPage = 1;
 const TASKS_PER_PAGE = 10;
 let _isSaving = false;
@@ -700,16 +679,14 @@ function mapTask(r) {
 function mapUser(r, extra = {}) {
   return {
     id: r.id, username: r.username, fullName: r.full_name, position: r.position || '',
-    department: r.department || '', role: r.role, managerId: r.manager_id,
+    department: r.department || '', role: r.role, managerId: r.manager_id, managerIds: extra.managerIds || (r.manager_id ? [r.manager_id] : []),
     phone: r.phone || '', points: r.points || 0, lang: r.language_pref || 'th',
     avatar: r.avatar || '', ...extra
   };
 }
-function mapShift(r) {
-  return { id: r.id, date: r.target_date, type: r.date_type, desc: r.description || '', staffId: r.assigned_staff, createdBy: r.created_by };
-}
+function hasManager(u, mgrId) { return Array.isArray(u.managerIds) && u.managerIds.includes(mgrId); }
 function mapReward(r) {
-  return { id: r.id, period: r.campaign_period, targetPoints: r.target_points, name: r.reward_name, detail: r.reward_detail || '', imageUrl: r.image_url || '', createdBy: r.created_by };
+  return { id: r.id, period: r.campaign_period, targetPoints: r.target_points, name: r.reward_name, detail: r.reward_detail || '', imageUrl: r.image_url || '', createdBy: r.created_by, startDate: r.start_date || '', endDate: r.end_date || '', status: r.status || 'active' };
 }
 function mapLog(r) {
   return { id: r.id, ts: r.ts, userId: r.user_id, action: r.user_action, target: r.target_table, recordId: r.record_id, prev: r.previous_value || '', next: r.new_value || '' };
@@ -730,8 +707,9 @@ async function _dispatchAPI(action, payload) {
       if (error) return { success:false, error: currentLang==='th' ? 'Username หรือ Password ไม่ถูกต้อง' : 'Invalid username or password' };
       const { data: profile, error: perr } = await supabase.from('users').select('*').eq('id', data.user.id).single();
       if (perr || !profile) return { success:false, error:'User profile not found' };
-      const { data: subs } = await supabase.from('users').select('id').eq('manager_id', data.user.id).limit(1);
-      return { success:true, user: mapUser(profile, { hasSubordinates: !!(subs && subs.length) }) };
+      const { data: subs } = await supabase.from('user_managers').select('user_id').eq('manager_id', data.user.id).limit(1);
+      const { data: myMgrs } = await supabase.from('user_managers').select('manager_id').eq('user_id', data.user.id);
+      return { success:true, user: mapUser(profile, { hasSubordinates: !!(subs && subs.length), managerIds: (myMgrs||[]).map(r=>r.manager_id) }) };
     }
     case 'LOGOUT': { await supabase.auth.signOut(); return { success:true }; }
     case 'GET_PROFILE': {
@@ -791,34 +769,12 @@ async function _dispatchAPI(action, payload) {
       return { success:true, pointsAwarded: data.pointsAwarded };
     }
     case 'REJECT_TASK': { const { error } = await supabase.rpc('reject_task', { p_task_id: payload.id, p_reason: payload.reason || '' }); if (error) throw error; return { success:true }; }
-    case 'GET_SHIFTS': { const { data, error } = await supabase.from('calendar_settings').select('*'); if (error) throw error; return { success:true, data:(data||[]).map(mapShift) }; }
-    case 'CREATE_SHIFT': {
-      const { data, error } = await supabase.from('calendar_settings').insert({
-        target_date: payload.date, date_type: payload.type || 'Shift', description: payload.desc || '',
-        assigned_staff: payload.staffId || null, created_by: currentUser.id
-      }).select().single();
-      if (error) throw error; return { success:true, id: data.id };
+    case 'GET_USERS': {
+      const { data, error } = await supabase.from('users').select('*'); if (error) throw error;
+      const { data: mgrRows } = await supabase.from('user_managers').select('user_id, manager_id');
+      const mgrMap = {}; (mgrRows||[]).forEach(r => { (mgrMap[r.user_id] = mgrMap[r.user_id]||[]).push(r.manager_id); });
+      return { success:true, data:(data||[]).map(u => mapUser(u, { managerIds: mgrMap[u.id] || [] })) };
     }
-    case 'UPDATE_SHIFT': {
-      const upd = {};
-      if (payload.date !== undefined) upd.target_date = payload.date;
-      if (payload.type !== undefined) upd.date_type = payload.type;
-      if (payload.desc !== undefined) upd.description = payload.desc;
-      if (payload.staffId !== undefined) upd.assigned_staff = payload.staffId || null;
-      const { error } = await supabase.from('calendar_settings').update(upd).eq('id', payload.id);
-      if (error) throw error; return { success:true };
-    }
-    case 'DELETE_SHIFT': { const { error } = await supabase.from('calendar_settings').delete().eq('id', payload.id); if (error) throw error; return { success:true }; }
-    case 'LOG_OT': {
-      const otType = payload.type || 'OT';
-      const { data, error } = await supabase.from('calendar_settings').insert({
-        target_date: payload.date, date_type: otType,
-        description: payload.desc ? `${otType}: ${payload.desc}` : otType,
-        assigned_staff: currentUser.id, created_by: currentUser.id
-      }).select().single();
-      if (error) throw error; return { success:true, id: data.id };
-    }
-    case 'GET_USERS': { const { data, error } = await supabase.from('users').select('*'); if (error) throw error; return { success:true, data:(data||[]).map(mapUser) }; }
     case 'CREATE_USER': {
       return { success:false, error: currentLang==='th' ? 'กรุณาสร้างผู้ใช้ใหม่ผ่าน SQL Editor ด้วยฟังก์ชัน add_employee() (ดูคู่มือการติดตั้ง)' : 'Please create new users via SQL Editor using add_employee()' };
     }
@@ -834,15 +790,24 @@ async function _dispatchAPI(action, payload) {
       if (rest.department !== undefined) upd.department = rest.department;
       if (rest.role !== undefined) upd.role = rest.role;
       if (rest.phone !== undefined) upd.phone = rest.phone;
-      if (rest.managerId !== undefined) upd.manager_id = rest.managerId || null;
       const { error } = await supabase.from('users').update(upd).eq('id', id);
-      if (error) throw error; return { success:true };
+      if (error) throw error;
+      if (rest.managerIds !== undefined) {
+        const { error: mErr } = await supabase.rpc('set_user_managers', { p_user_id: id, p_manager_ids: rest.managerIds });
+        if (mErr) throw mErr;
+      }
+      return { success:true };
     }
     case 'DELETE_USER': {
       return { success:false, error: currentLang==='th' ? 'การลบผู้ใช้ต้องทำผ่าน Supabase Dashboard (Authentication > Users) แล้วลบแถวใน Table Editor > users ตามด้วย' : 'Deleting users must be done via the Supabase Dashboard' };
     }
-    case 'GET_ORG': { const { data, error } = await supabase.from('users').select('*'); if (error) throw error; return { success:true, data:(data||[]).map(mapUser) }; }
-    case 'SET_MANAGER': { const { error } = await supabase.from('users').update({ manager_id: payload.managerId || null }).eq('id', payload.userId); if (error) throw error; return { success:true }; }
+    case 'GET_ORG': {
+      const { data, error } = await supabase.from('users').select('*'); if (error) throw error;
+      const { data: mgrRows } = await supabase.from('user_managers').select('user_id, manager_id');
+      const mgrMap = {}; (mgrRows||[]).forEach(r => { (mgrMap[r.user_id] = mgrMap[r.user_id]||[]).push(r.manager_id); });
+      return { success:true, data:(data||[]).map(u => mapUser(u, { managerIds: mgrMap[u.id] || [] })) };
+    }
+    case 'SET_MANAGERS': { const { error } = await supabase.rpc('set_user_managers', { p_user_id: payload.userId, p_manager_ids: payload.managerIds || [] }); if (error) throw error; return { success:true }; }
     case 'CHANGE_PASSWORD': {
       const { data: { user } } = await supabase.auth.getUser();
       const verify = await supabase.auth.signInWithPassword({ email: user.email, password: payload.currentPassword });
@@ -863,14 +828,28 @@ async function _dispatchAPI(action, payload) {
       const { error } = await supabase.from('users').update({ avatar: payload.avatar }).eq('id', currentUser.id);
       if (error) throw error; return { success:true, avatarUrl: payload.avatar };
     }
-    case 'GET_REWARDS': { const { data, error } = await supabase.from('rewards').select('*'); if (error) throw error; return { success:true, data:(data||[]).map(mapReward) }; }
+    case 'GET_REWARDS': {
+      const { data, error } = await supabase.from('rewards').select('*').order('created_at', { ascending:false });
+      if (error) throw error;
+      const rewards = (data||[]).map(mapReward);
+      for (const r of rewards) {
+        try {
+          const { data: prog } = await supabase.rpc('reward_progress', { p_reward_id: r.id, p_user_id: currentUser.id });
+          r.myProgress = prog || 0;
+        } catch(e) { r.myProgress = 0; }
+      }
+      return { success:true, data: rewards };
+    }
     case 'CREATE_REWARD': {
       const { data, error } = await supabase.from('rewards').insert({
-        campaign_period: payload.period || 'monthly', target_points: parseInt(payload.targetPoints)||400,
-        reward_name: payload.name, reward_detail: payload.detail || '', created_by: currentUser.id
+        campaign_period: payload.period || 'custom', target_points: parseInt(payload.targetPoints)||500,
+        reward_name: payload.name, reward_detail: payload.detail || '',
+        start_date: payload.startDate || null, end_date: payload.endDate || null,
+        status: 'active', created_by: currentUser.id
       }).select().single();
       if (error) throw error; return { success:true, id: data.id };
     }
+    case 'CLOSE_REWARD': { const { error } = await supabase.rpc('close_reward', { p_reward_id: payload.id }); if (error) throw error; return { success:true }; }
     case 'DELETE_REWARD': { const { error } = await supabase.from('rewards').delete().eq('id', payload.id); if (error) throw error; return { success:true }; }
     case 'GET_CATEGORIES': { const { data, error } = await supabase.from('task_categories').select('*').order('id'); if (error) throw error; return { success:true, data:(data||[]).map(r=>({id:r.id,name:r.name})) }; }
     case 'CREATE_CATEGORY': {
@@ -1056,6 +1035,14 @@ function getUserName(id) { if (!id) return '-'; const u = usersCache.find(x => x
 function isValidImage(val) { if (!val) return false; const s = String(val); return s.startsWith('data:image') || s.startsWith('https://'); }
 function fixDriveUrl(url) { return url; }
 function todayStr() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; }
+function parseLocalDate(dateStr) {
+  if (!dateStr) return null;
+  const s = String(dateStr).substring(0,19).replace('T',' ');
+  const [datePart, timePart] = s.split(' ');
+  const [y,m,d] = datePart.split('-').map(Number);
+  if (timePart) { const [hh,mm,ss] = timePart.split(':').map(Number); return new Date(y, m-1, d, hh||0, mm||0, ss||0); }
+  return new Date(y, m-1, d);
+}
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
 document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) { e.target.classList.remove('open'); document.body.style.overflow = ''; } });
@@ -1067,7 +1054,7 @@ function canManageTaskFE(tk) { if (isAdmin()) return true; if (isManager()) retu
 function getTeamUsers() {
   if (!currentUser) return [];
   if (isAdmin()) return usersCache;
-  if (isManager()) return usersCache.filter(u => u.id === currentUser.id || u.managerId === currentUser.id);
+  if (isManager()) return usersCache.filter(u => u.id === currentUser.id || hasManager(u, currentUser.id));
   return usersCache.filter(u => u.id === currentUser.id);
 }
 
@@ -1086,6 +1073,7 @@ async function doLogin() {
     await loadInitialData();
     buildLayout(); applyLang(); navigate('dashboard');
     toast(`${t('greeting')}, ${currentUser.fullName}! 🎉`, 'success');
+    setTimeout(() => showUrgentAlertPopup(), 500);
   } catch(e) { toast(e.message, 'error'); }
   finally { hideLoading(); }
 }
@@ -1112,12 +1100,11 @@ function buildLayout() {
   const isAdminUser = isAdmin(); const isManagerUser = isManager();
   const roleDisplay = () => isAdminUser ? t('role.admin') : (currentUser.role === 'Manager' ? t('role.manager') : t('role.user'));
   document.getElementById('sidebar').innerHTML = `
-    <div class="sidebar-header"><div class="sidebar-logo-icon">📋</div><div><div class="sidebar-title">WorkFlow Pro</div><div class="sidebar-sub">Supabase Edition</div></div></div>
+    <div class="sidebar-header"><div class="sidebar-logo-icon">📋</div><div><div class="sidebar-title">WorkFlow Pro<span class="version-badge">v3.0</span></div><div class="sidebar-sub">Supabase Edition</div></div></div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">${currentLang === 'th' ? 'หลัก' : 'Main'}</div>
       <div class="nav-item active" onclick="navigate('dashboard')" data-page="dashboard"><span class="nav-icon">📊</span><span>${t('nav.dashboard')}</span></div>
       <div class="nav-item" onclick="navigate('tasks')" data-page="tasks"><span class="nav-icon">✅</span><span>${t('nav.tasks')}</span><span class="nav-badge" id="badge-tasks" style="display:none">0</span></div>
-      <div class="nav-item" onclick="navigate('calendar')" data-page="calendar"><span class="nav-icon">📅</span><span>${t('nav.calendar')}</span></div>
       <div class="nav-item" onclick="navigate('kpi')" data-page="kpi"><span class="nav-icon">🏆</span><span>${t('nav.kpi')}</span></div>
       <div class="nav-item" onclick="navigate('salary')" data-page="salary"><span class="nav-icon">💰</span><span>${t('nav.salary')}</span></div>
       ${isManagerUser ? `<div class="nav-item" onclick="navigate('org')" data-page="org"><span class="nav-icon">🏢</span><span>${t('nav.org')}</span></div>` : ''}
@@ -1205,1170 +1192,4 @@ function buildPagesHTML() {
         <div class="adv-filter-grid">
           <div class="adv-filter-col"><label>📂 ประเภทงาน</label><select class="adv-filter-select" id="af-category" onchange="taskCurrentPage=1;renderTaskList()"><option value="">— ทั้งหมด —</option></select></div>
           <div class="adv-filter-col"><label>👤 ผู้รับผิดชอบ</label><select class="adv-filter-select" id="af-assignee" onchange="taskCurrentPage=1;renderTaskList()"><option value="">— ทุกคน —</option></select></div>
-          <div class="adv-filter-col"><label>⚡ ความเร่งด่วน</label><select class="adv-filter-select" id="af-priority" onchange="taskCurrentPage=1;renderTaskList()"><option value="">— ทั้งหมด —</option><option value="Critical">🔴 Critical</option><option value="High">🟠 High</option><option value="Medium">🔵 Medium</option><option value="Low">🟢 Low</option></select></div>
-          <div class="adv-filter-col"><label>📅 กำหนดส่ง ตั้งแต่</label><input type="date" class="adv-filter-select" id="af-date-from" onchange="taskCurrentPage=1;renderTaskList()"></div>
-          <div class="adv-filter-col"><label>📅 กำหนดส่ง ถึง</label><input type="date" class="adv-filter-select" id="af-date-to" onchange="taskCurrentPage=1;renderTaskList()"></div>
-          <div class="adv-filter-col"><label>📁 แหล่งที่มา</label><select class="adv-filter-select" id="af-source" onchange="taskCurrentPage=1;renderTaskList()"><option value="">— ทั้งหมด —</option><option value="assigned">📋 มอบหมาย</option><option value="self">✍️ บันทึกเอง</option></select></div>
-        </div>
-        <div class="adv-filter-tags" id="adv-filter-tags"></div>
-      </div>
-    </div>
-    <div id="task-list"></div>
-  </div>
-
-  <div class="page" id="page-calendar">
-    <div class="page-header">
-      <div style="display:flex; align-items:center; gap:12px;"><div class="page-title">${t('nav.calendar')}</div>
-        <select class="select-field" id="cal-staff-filter" onchange="renderCalendar()" style="padding:6px 12px; font-size:.85rem; max-width:200px;"><option value="">-- ตารางรวมทั้งหมด --</option></select>
-      </div>
-      <div><button class="btn btn-secondary" onclick="openOTModal()">📝 บันทึก OT / มาทำงาน</button></div>
-    </div>
-    <div class="card"><div class="card-body">
-      <div class="calendar-nav"><button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">◀</button><div class="cal-month-title" id="cal-month-title"></div><button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">▶</button></div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-    </div></div>
-  </div>
-
-  <div class="page" id="page-kpi">
-    <div class="page-header"><div><div class="page-title">🏆 ${t('nav.kpi')}</div></div>${(isAdminUser||isManagerUser) ? `<button class="btn btn-primary" onclick="openModal('modal-reward')">🎁 ตั้งรางวัล</button>` : ''}</div>
-    <div class="grid-2" style="margin-bottom:22px">
-      <div class="reward-card"><div class="reward-pts" id="kpi-page-score">0</div><div class="reward-label" id="kpi-page-score-label">${t('dash.accPoints')}</div><div class="reward-pb-bg"><div class="reward-pb-fill" id="kpi-page-bar" style="width:0%"></div></div><div class="reward-target" id="kpi-page-target"></div></div>
-      <div class="card"><div class="card-header">🎁 รางวัลปัจจุบัน</div><div class="card-body" id="reward-list"></div></div>
-    </div>
-    <div class="card"><div class="card-header"><span>📊 Leaderboard</span><label style="display:flex;align-items:center;gap:8px;font-size:.83rem;font-weight:500;cursor:pointer"><input type="checkbox" id="lb-anon" onchange="renderLeaderboard()"> ${t('lb.hideNames')}</label></div><div id="leaderboard-list"></div></div>
-  </div>
-
-  <div class="page" id="page-salary">
-    <div class="page-header"><div><div class="page-title">💰 ${t('nav.salary')}</div><div class="page-sub">คำนวณบนเบราว์เซอร์ — ไม่มีการบันทึกข้อมูล</div></div><span class="badge badge-green">🔒 Zero Data Saving</span></div>
-    <div class="grid-2">
-      <div>
-        <div class="card"><div class="card-header">💵 รายได้</div><div class="card-body">
-          <div class="input-group"><label class="input-label">${t('sal.base')}</label><input type="number" class="input-field" id="sal-base" oninput="calcSalary()" inputmode="numeric" /></div>
-          <div class="input-row"><div class="input-group"><label class="input-label">${t('sal.ot10')}</label><input type="number" class="input-field" id="sal-ot10" oninput="calcSalary()" inputmode="numeric" /></div><div class="input-group"><label class="input-label">${t('sal.ot15')}</label><input type="number" class="input-field" id="sal-ot15" oninput="calcSalary()" inputmode="numeric" /></div></div>
-          <div class="input-row"><div class="input-group"><label class="input-label">${t('sal.ot20')}</label><input type="number" class="input-field" id="sal-ot20" oninput="calcSalary()" inputmode="numeric" /></div><div class="input-group"><label class="input-label">${t('sal.ot30')}</label><input type="number" class="input-field" id="sal-ot30" oninput="calcSalary()" inputmode="numeric" /></div></div>
-          <div class="input-row"><div class="input-group"><label class="input-label">${t('sal.allowance')}</label><input type="number" class="input-field" id="sal-allowance" oninput="calcSalary()" inputmode="numeric" /></div><div class="input-group"><label class="input-label">${t('sal.position')}</label><input type="number" class="input-field" id="sal-position" oninput="calcSalary()" inputmode="numeric" /></div></div>
-          <div class="input-group"><label class="input-label">${t('sal.other')}</label><input type="number" class="input-field" id="sal-other" oninput="calcSalary()" inputmode="numeric" /></div>
-        </div></div>
-        <div class="card"><div class="card-header">💸 รายการหัก</div><div class="card-body">
-          <div class="input-row"><div class="input-group"><label class="input-label">${t('sal.sso')}</label><input type="number" class="input-field" id="sal-sso" oninput="calcSalary()" inputmode="numeric" /></div><div class="input-group"><label class="input-label">${t('sal.fund')}</label><input type="number" class="input-field" id="sal-fund" oninput="calcSalary()" inputmode="numeric" /></div></div>
-          <div class="input-row"><div class="input-group"><label class="input-label">${t('sal.tax')}</label><input type="number" class="input-field" id="sal-tax" oninput="calcSalary()" inputmode="numeric" /></div><div class="input-group"><label class="input-label">${t('sal.deductOther')}</label><input type="number" class="input-field" id="sal-deduct-other" oninput="calcSalary()" inputmode="numeric" /></div></div>
-        </div></div>
-      </div>
-      <div class="salary-result"><div class="reward-card">
-        <div style="font-size:.83rem;opacity:.7;margin-bottom:4px">${t('sal.net')}</div><div class="salary-net" id="sal-net">฿0</div>
-        <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,.15);padding-top:14px">
-          <div class="salary-row"><span>${t('sal.gross')}</span><span id="r-gross">฿0</span></div>
-          <div class="salary-row" style="color:#FCA5A5"><span>${t('sal.deduct')}</span><span id="r-total-deduct">-฿0</span></div>
-        </div>
-        <button class="btn btn-secondary" style="margin-top:18px;width:100%" onclick="resetSalary()">${t('sal.reset')}</button>
-      </div></div>
-    </div>
-  </div>
-
-  <div class="page" id="page-users">
-    <div class="page-header"><div><div class="page-title">👥 ${t('nav.users')}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-warning" onclick="openDeductModal()">${t('deduct.btn')}</button><button class="btn btn-primary" onclick="openNewUserModal()">➕ เพิ่มผู้ใช้</button></div>
-    </div>
-    <div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>ชื่อ-สกุล</th><th>Username</th><th>ตำแหน่ง</th><th>แผนก</th><th>สิทธิ์</th><th>เบอร์โทร</th><th>คะแนน</th><th></th></tr></thead><tbody id="users-table-body"></tbody></table></div></div>
-  </div>
-
-  <div class="page" id="page-org">
-    <div class="page-header"><div><div class="page-title">🏢 ${t('nav.org')}</div></div></div>
-    <div class="card"><div class="card-body" id="org-chart-body"><div class="empty-state"><p>Loading...</p></div></div></div>
-  </div>
-
-  <div class="page" id="page-deductions">
-    <div class="page-header"><div><div class="page-title">⚠️ ${t('nav.deductions')}</div></div><button class="btn btn-warning" onclick="openDeductModal()">${t('deduct.btn')}</button></div>
-    <div class="card">
-      <div class="card-header"><span>${t('deduct.historyTitle')}</span><div class="search-wrap" style="min-width:160px"><span class="search-icon">🔍</span><select class="input-field" id="deduct-filter-user" onchange="loadDeductions()" style="padding-left:36px"><option value="">พนักงานทั้งหมด</option></select></div></div>
-      <div class="table-wrap"><table><thead><tr><th>#</th><th>พนักงาน</th><th>ตัดโดย</th><th>คะแนน</th><th>หมวด</th><th>เหตุผล</th><th>${t('deduct.before')}</th><th>${t('deduct.after')}</th><th>วันที่</th></tr></thead><tbody id="deductions-table-body"></tbody></table></div>
-    </div>
-  </div>
-
-  <div class="page" id="page-reports">
-    <div class="page-header"><div><div class="page-title">📊 ${t('nav.reports')}</div></div></div>
-    <div class="card"><div class="card-header">📅 เลือกช่วงวันที่</div><div class="card-body">
-      <div class="input-row" style="max-width:480px"><div class="input-group"><label class="input-label">${t('report.from')}</label><input type="date" class="input-field" id="report-from" /></div><div class="input-group"><label class="input-label">${t('report.to')}</label><input type="date" class="input-field" id="report-to" /></div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="loadReport()">${t('report.view')}</button><button class="btn btn-secondary" onclick="exportReportCSV()">${t('report.export')}</button></div>
-    </div></div>
-    <div id="report-result" style="display:none">
-      <div class="report-summary-grid" id="report-summary"></div>
-      <div class="card"><div class="card-header">📋 รายการงาน</div><div class="table-wrap"><table><thead><tr><th>#</th><th>ชื่องาน</th><th>ประเภท</th><th>สถานะ</th><th>มอบหมายให้</th><th>${t('label.deadline')}</th><th>${t('label.startTime')}</th><th>${t('label.endTime')}</th><th>เสร็จเมื่อ</th><th>อนุมัติโดย</th><th>${t('label.points')}</th><th>ประเภทการสร้าง</th></tr></thead><tbody id="report-tasks-body"></tbody></table></div></div>
-    </div>
-  </div>
-
-  <div class="page" id="page-audit">
-    <div class="page-header"><div><div class="page-title">🔍 ${t('nav.audit')}</div></div><button class="btn btn-danger btn-sm" onclick="clearAuditLogs()">🗑 ล้าง Log</button></div>
-    <div class="card"><div id="audit-log-list"><div class="empty-state"><p>Loading...</p></div></div></div>
-  </div>
-
-  <div class="page" id="page-profile">
-    <div class="profile-hero">
-      <div style="position:relative;flex-shrink:0">
-        <div class="profile-avatar-lg" id="profile-avatar-lg" style="${currentUser.avatar ? 'background:transparent;padding:0;overflow:hidden;' : ''}">
-          ${currentUser.avatar ? `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />` : currentUser.fullName.charAt(0).toUpperCase()}
-        </div>
-        <label for="avatar-upload" title="เปลี่ยนรูปโปรไฟล์" style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;background:var(--secondary);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid #1E3A8A;font-size:.75rem;">📷</label>
-        <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)" />
-      </div>
-      <div><div class="profile-name" id="profile-fullname">${currentUser.fullName}</div><div class="profile-pos" id="profile-position">${currentUser.position || '—'} · ${currentUser.department || '—'}</div><span class="badge badge-navy">${isAdminUser ? t('role.admin') : (currentUser.role === 'Manager' ? t('role.manager') : t('role.user'))}</span></div>
-    </div>
-    <div class="grid-2">
-      <div class="card"><div class="card-header">👤 ข้อมูลโปรไฟล์</div><div class="card-body">
-        <div class="input-group"><label class="input-label">${t('label.fullName').replace(' *','')}</label><input type="text" class="input-field" id="profile-edit-name" value="${currentUser.fullName}" /></div>
-        <div class="input-group"><label class="input-label">${t('label.position')}</label><input type="text" class="input-field" id="profile-edit-pos" value="${currentUser.position || ''}" /></div>
-        <div class="input-group"><label class="input-label">เบอร์โทร</label><input type="tel" class="input-field" id="profile-edit-phone" value="${currentUser.phone || ''}" /></div>
-        <button class="btn btn-primary" onclick="saveProfile()">💾 บันทึก</button>
-      </div></div>
-      <div class="card"><div class="card-header">🔑 เปลี่ยนรหัสผ่าน</div><div class="card-body">
-        <div class="input-group"><label class="input-label">รหัสผ่านปัจจุบัน</label><input type="password" class="input-field" id="pw-current" /></div>
-        <div class="input-group"><label class="input-label">รหัสผ่านใหม่</label><input type="password" class="input-field" id="pw-new" /></div>
-        <div class="input-group"><label class="input-label">ยืนยันรหัสผ่านใหม่</label><input type="password" class="input-field" id="pw-confirm" /></div>
-        <button class="btn btn-secondary" onclick="changePassword()">🔒 เปลี่ยนรหัสผ่าน</button>
-      </div></div>
-    </div>
-  </div>`;
-}
-
-function populateDropdowns() {
-  const catEl = document.getElementById('task-category');
-  if (catEl) catEl.innerHTML = categoriesCache.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-  const assignEl = document.getElementById('task-assign');
-  if (assignEl) {
-    let assignable = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || u.managerId === currentUser.id) : usersCache.filter(u => u.id === currentUser.id));
-    assignEl.innerHTML = assignable.map(u => `<option value="${u.id}">${u.fullName}${u.position ? ' ('+u.position+')' : ''}</option>`).join('');
-  }
-  const shiftEl = document.getElementById('shift-staff');
-  if (shiftEl) {
-    let shiftStaff = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || u.managerId === currentUser.id) : usersCache.filter(u => u.id === currentUser.id));
-    shiftEl.innerHTML = `<option value="">— เลือกพนักงาน —</option>` + shiftStaff.map(u => `<option value="${u.id}">${u.fullName}</option>`).join('');
-  }
-  const mgrEl = document.getElementById('user-manager');
-  if (mgrEl) mgrEl.innerHTML = `<option value="">— ไม่มี —</option>` + usersCache.map(u => `<option value="${u.id}">${u.fullName}${u.position ? ' ('+u.position+')' : ''}</option>`).join('');
-  const deductUserEl = document.getElementById('deduct-user-select');
-  if (deductUserEl) {
-    let deductable = isAdmin() ? usersCache : usersCache.filter(u => u.managerId === currentUser.id);
-    deductUserEl.innerHTML = `<option value="">— เลือกพนักงาน —</option>` + deductable.map(u => `<option value="${u.id}" data-points="${u.points||0}">${u.fullName} (${u.points||0} pts)</option>`).join('');
-  }
-  const filterUserEl = document.getElementById('deduct-filter-user');
-  if (filterUserEl) {
-    let filterable = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || u.managerId === currentUser.id) : usersCache.filter(u => u.id === currentUser.id));
-    filterUserEl.innerHTML = `<option value="">พนักงานทั้งหมด</option>` + filterable.map(u => `<option value="${u.id}">${u.fullName}</option>`).join('');
-  }
-}
-
-/* ══════════════════ NAVIGATION ══════════════════ */
-function updateTopbarTitle(page) { const el = document.getElementById('topbar-title'); if (el) el.textContent = t(`page.${page}`) || page; }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-backdrop').classList.toggle('open'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-backdrop').classList.remove('open'); }
-function navigate(page) {
-  currentPage = page;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const pg = document.getElementById(`page-${page}`); if (pg) pg.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  updateTopbarTitle(page); closeSidebar(); window.scrollTo(0, 0);
-  const loaders = { dashboard: loadDashboard, tasks: loadTasks, calendar: renderCalendar, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
-  if (loaders[page]) loaders[page]();
-}
-async function refreshCurrentPage() {
-  const loaders = { dashboard: loadDashboard, tasks: loadTasks, calendar: renderCalendar, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
-  if (loaders[currentPage]) await loaders[currentPage]();
-}
-
-/* ══════════════════ DASHBOARD ══════════════════ */
-async function loadDashboard() {
-  showLoading();
-  try {
-    const bundle = await callAPI('GET_DASHBOARD_BUNDLE');
-    const { stats, points, recentTasks = [] } = bundle.dashboard;
-    tasksCache = bundle.tasks || [];
-    ['total','done','overdue','cancelled'].forEach(k => { const el = document.getElementById(`s-${k}`); if (el) el.textContent = stats[k] ?? 0; });
-    const rtEl = document.getElementById('recent-tasks-list');
-    if (rtEl) {
-      rtEl.innerHTML = recentTasks.length ? recentTasks.map(tk => `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border)">
-          <div style="width:8px;height:8px;border-radius:50%;background:${priorityColor(tk.priority)};flex-shrink:0"></div>
-          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tk.title}</div><div style="font-size:.76rem;color:var(--text-sub)">${getUserName(tk.assignedTo)} · ${fmtDate(tk.deadline)}</div></div>
-          <span class="badge ${statusBadgeClass(tk.status)}" style="flex-shrink:0">${statusLabel(tk.status)}</span>
-          <span style="font-weight:700;color:var(--warning);flex-shrink:0">+${tk.points}pt</span>
-        </div>`).join('') : `<div class="empty-state"><div class="empty-icon">📂</div><p>ยังไม่มีงาน</p></div>`;
-    }
-    const currentPoints = points || 0;
-    const ranks = [
-      { min:0, max:99, icon:'🥚', name:'มือใหม่หัดเดิน', sub:'Rank 1' }, { min:100, max:199, icon:'🐣', name:'รุกกี้ป้ายแดง', sub:'Rank 2' },
-      { min:200, max:349, icon:'🌱', name:'นักเรียนฝึกหัด', sub:'Rank 3' }, { min:350, max:499, icon:'⚒️', name:'ช่างฝีมือมือใหม่', sub:'Rank 4' },
-      { min:500, max:699, icon:'🛡️', name:'เซฟตี้อัศวิน', sub:'Rank 5' }, { min:700, max:999, icon:'⚔️', name:'นักรบผู้ตื่นรู้', sub:'Rank 6' },
-      { min:1000, max:1299, icon:'🦺', name:'พาลาดินผู้พิทักษ์', sub:'Rank 7' }, { min:1300, max:1599, icon:'🔰', name:'ผู้เชี่ยวชาญสนาม', sub:'Rank 8' },
-      { min:1600, max:1999, icon:'🦅', name:'จอมเวทย์ตาเหยี่ยว', sub:'Rank 9' }, { min:2000, max:2499, icon:'🌟', name:'ดาวแห่งทีมงาน', sub:'Rank 10' },
-      { min:2500, max:999999, icon:'💎', name:'เพชรแห่งองค์กร', sub:'Rank 11 MAX' },
-    ];
-    let currentRank = ranks[0]; let nextRank = ranks[1];
-    for (let i=0;i<ranks.length;i++) { if (currentPoints>=ranks[i].min && currentPoints<=ranks[i].max) { currentRank=ranks[i]; nextRank=ranks[i+1]||null; break; } }
-    const el = id => document.getElementById(id);
-    if (el('rank-icon')) el('rank-icon').textContent = currentRank.icon;
-    if (el('rank-name')) el('rank-name').textContent = currentRank.name;
-    if (el('rank-sub')) el('rank-sub').textContent = currentRank.sub;
-    if (el('kpi-score')) el('kpi-score').textContent = currentPoints;
-    if (nextRank) {
-      const pct = Math.min(100, Math.round(((currentPoints - currentRank.min) / (nextRank.min - currentRank.min)) * 100));
-      if (el('kpi-target-label')) el('kpi-target-label').textContent = `Next: ${nextRank.name}`;
-      if (el('kpi-min-label')) el('kpi-min-label').textContent = currentRank.min;
-      if (el('kpi-max-label')) el('kpi-max-label').textContent = nextRank.min;
-      if (el('kpi-bar')) el('kpi-bar').style.width = pct + '%';
-      if (el('kpi-pct')) el('kpi-pct').textContent = pct + '%';
-      if (el('kpi-status-msg')) el('kpi-status-msg').innerHTML = `อีก <strong style="color:var(--danger)">${nextRank.min - currentPoints} EXP</strong> จะได้เลื่อนขั้นเป็น <strong>${nextRank.name}</strong> 🚀`;
-    } else {
-      if (el('kpi-target-label')) el('kpi-target-label').textContent = 'MAX LEVEL';
-      if (el('kpi-bar')) el('kpi-bar').style.width = '100%';
-      if (el('kpi-pct')) el('kpi-pct').textContent = 'MAX';
-      if (el('kpi-status-msg')) el('kpi-status-msg').innerHTML = `🎉 คุณคือ <strong>${currentRank.name}</strong> จุดสูงสุดแล้ว!`;
-    }
-    const badge = document.getElementById('badge-tasks');
-    if (badge) { const pending = stats.pending||0; badge.textContent = pending; badge.style.display = pending>0?'':'none'; }
-    drawDonut(stats);
-  } catch(e) { toast(e.message, 'error'); }
-  finally { hideLoading(); }
-}
-function drawDonut(stats) {
-  const canvas = document.getElementById('donut-canvas'); if (!canvas) return;
-  const ctx = canvas.getContext('2d'); const total = Math.max(stats.total, 1);
-  const segments = [ { val:stats.pending||0, color:'#94A3B8', label:t('status.pending') }, { val:stats.done||0, color:'#10B981', label:t('status.done') }, { val:stats.overdue||0, color:'#EF4444', label:t('status.overdue') }, { val:stats.cancelled||0, color:'#64748B', label:t('status.cancelled') } ];
-  const cx=canvas.width/2, cy=canvas.height/2, r=55; ctx.clearRect(0,0,canvas.width,canvas.height);
-  let angle=-Math.PI/2;
-  segments.forEach(s => { if (!s.val) return; const slice=(s.val/total)*2*Math.PI; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.fillStyle=s.color; ctx.fill(); angle+=slice; });
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.58,0,2*Math.PI); ctx.fillStyle='#fff'; ctx.fill();
-  ctx.fillStyle='#1E293B'; ctx.font='bold 16px Sarabun'; ctx.textAlign='center'; ctx.fillText(stats.total||0, cx, cy+6);
-  const legend = document.getElementById('donut-legend');
-  if (legend) legend.innerHTML = segments.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:11px;height:11px;border-radius:50%;background:${s.color};flex-shrink:0"></div><span style="font-size:.83rem">${s.label}: <strong>${s.val}</strong></span></div>`).join('');
-}
-
-/* ══════════════════ TASKS ══════════════════ */
-async function loadTasks() { try { const data = await callAPI('GET_TASKS'); tasksCache = data.data || []; renderTaskList(); } catch(e) { toast(e.message, 'error'); } }
-function setTaskFilter(f, el) { taskFilter = f; taskCurrentPage = 1; document.querySelectorAll('#page-tasks .filter-chip').forEach(c => c.classList.remove('active')); el.classList.add('active'); renderTaskList(); }
-let _searchTimer = null;
-function debounceSearch() { clearTimeout(_searchTimer); _searchTimer = setTimeout(() => { taskCurrentPage = 1; renderTaskList(); }, 280); }
-
-function renderTaskList() {
-  let tasks = [...tasksCache]; const today = todayStr();
-  const search = document.getElementById('task-search')?.value?.toLowerCase().trim() || '';
-  const f = _getAdvFilterValues();
-  if (taskFilter === 'self') tasks = tasks.filter(tk => tk.source === 'self');
-  else if (taskFilter === 'pending_approval') tasks = tasks.filter(tk => tk.status === 'done' && !tk.approvedAt);
-  else if (taskFilter === 'overdue') tasks = tasks.filter(tk => tk.deadline && tk.deadline < today && tk.status !== 'done' && tk.status !== 'cancelled' && tk.status !== 'rejected');
-  else if (taskFilter !== 'all') tasks = tasks.filter(tk => tk.status === taskFilter);
-  if (search) tasks = tasks.filter(tk => tk.title.toLowerCase().includes(search) || (tk.desc||'').toLowerCase().includes(search) || getUserName(tk.assignedTo).toLowerCase().includes(search) || (tk.category||'').toLowerCase().includes(search));
-  if (f.category) tasks = tasks.filter(tk => tk.category === f.category);
-  if (f.assignee) tasks = tasks.filter(tk => tk.assignedTo == f.assignee);
-  if (f.priority) tasks = tasks.filter(tk => tk.priority === f.priority);
-  if (f.dateFrom) tasks = tasks.filter(tk => (tk.deadline||tk.startDate||'') >= f.dateFrom);
-  if (f.dateTo) tasks = tasks.filter(tk => (tk.deadline||tk.startDate||'') <= f.dateTo);
-  if (f.source) tasks = tasks.filter(tk => tk.source === f.source);
-  _renderAdvFilterTags(f);
-  tasks.sort((a,b) => {
-    if (a.status==='done' && b.status==='done') return (b.completedAt||'').localeCompare(a.completedAt||'');
-    if ((a.status==='cancelled'||a.status==='rejected') && (b.status==='cancelled'||b.status==='rejected')) return (b.updatedAt||'').localeCompare(a.updatedAt||'');
-    const dlA=a.deadline||'9999-12-31', dlB=b.deadline||'9999-12-31';
-    if (dlA!==dlB) return dlA.localeCompare(dlB);
-    return b.id - a.id;
-  });
-  const chip = document.getElementById('task-total-chip'); if (chip) chip.textContent = tasks.length;
-  const totalPages = Math.ceil(tasks.length / TASKS_PER_PAGE) || 1;
-  if (taskCurrentPage > totalPages) taskCurrentPage = totalPages;
-  if (taskCurrentPage < 1) taskCurrentPage = 1;
-  const start = (taskCurrentPage-1)*TASKS_PER_PAGE;
-  const tasksToRender = tasks.slice(start, start+TASKS_PER_PAGE);
-  const isAdminUser = isAdmin(); const isManagerUser = isManager();
-  function dueBadge(tk) {
-    if (!tk.deadline || tk.status==='done' || tk.status==='cancelled' || tk.status==='rejected') return '';
-    const diff = Math.ceil((new Date(tk.deadline) - new Date()) / 86400000);
-    if (diff < 0) return `<span style="color:var(--danger);font-size:.73rem;font-weight:700">🚨 เกิน ${Math.abs(diff)} วัน</span>`;
-    if (diff === 0) return `<span style="color:#D97706;font-size:.73rem;font-weight:700">⚠️ ครบวันนี้</span>`;
-    if (diff <= 2) return `<span style="color:#D97706;font-size:.73rem;font-weight:700">⏰ อีก ${diff} วัน</span>`;
-    return '';
-  }
-  let html = '';
-  if (tasksToRender.length) {
-    html = tasksToRender.map(tk => `
-      <div class="task-card" style="${tk.deadline && tk.deadline < today && tk.status!=='done' && tk.status!=='cancelled' && tk.status!=='rejected' ? 'border-left:3px solid var(--danger);' : ''}">
-        <div class="task-card-priority" style="background:${priorityColor(tk.priority)}"></div>
-        <div class="task-card-body">
-          <div class="task-card-title">${tk.title}
-            ${tk.priority==='Critical'?'<span class="badge badge-critical">⚠️ Critical</span>':''}
-            ${tk.source==='self'?`<span class="badge badge-orange">${t('source.self')}</span>`:''}
-            ${tk.approvedAt?'<span class="badge badge-green">✅ Approved</span>':''}
-            ${tk.source==='self'&&!tk.approvedAt&&tk.status==='done'?'<span class="badge badge-orange">⏳ รออนุมัติคะแนน</span>':''}
-          </div>
-          <div class="task-card-meta">
-            <span>📂 ${tk.category}</span><span>👤 ${getUserName(tk.assignedTo)}</span><span>📅 ${fmtDate(tk.deadline)}</span>
-            ${isValidTime(tk.startTime)?`<span>⏰ ${tk.startTime}</span>`:''}${isValidTime(tk.endTime)?`<span>🔚 ${tk.endTime}</span>`:''}
-            <span>⭐ ${tk.points} pt</span>${dueBadge(tk)}
-            ${tk.completedAt?`<span style="color:var(--success)">✅ ${fmtDateTime(tk.completedAt)}</span>`:''}
-          </div>
-        </div>
-        <span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span>
-        <div class="task-actions">
-          <button class="btn btn-secondary btn-sm" onclick="viewTaskDetail(${tk.id})">👁</button>
-          ${canEditTask(tk)?`<button class="btn btn-secondary btn-sm" onclick="editTask(${tk.id})">✏️</button>`:''}
-          ${tk.status!=='done'&&tk.status!=='cancelled'&&(isManagerUser||tk.assignedTo===currentUser.id||tk.createdBy===currentUser.id)?`<button class="btn ${tk.status==='rejected'?'btn-warning':'btn-success'} btn-sm" onclick="markDone(${tk.id})">${tk.status==='rejected'?'📤':'✅'}</button>`:''}
-          ${isManagerUser&&tk.status==='done'&&!tk.approvedAt?`<button class="btn btn-secondary btn-sm" onclick="approveTask(${tk.id})">👍</button>`:''}
-          ${isManagerUser&&tk.status!=='done'&&tk.status!=='cancelled'&&tk.status!=='rejected'?`<button class="btn btn-warning btn-sm" onclick="cancelTask(${tk.id})">❌</button>`:''}
-          ${isAdminUser?`<button class="btn btn-danger btn-sm" onclick="deleteTask(${tk.id})">🗑</button>`:''}
-        </div>
-      </div>`).join('');
-  } else { html = `<div class="empty-state"><div class="empty-icon">📋</div><p>ไม่พบงานที่ตรงเงื่อนไข</p></div>`; }
-  document.getElementById('task-list').innerHTML = html;
-  renderPaginationControls(totalPages);
-}
-let advFilterOpen = false;
-function toggleAdvFilter() { advFilterOpen = !advFilterOpen; document.getElementById('adv-filter-body')?.classList.toggle('open', advFilterOpen); const arrow=document.getElementById('adv-arrow'); if (arrow) arrow.style.transform = advFilterOpen?'rotate(180deg)':''; if (advFilterOpen) _populateAdvFilterDropdowns(); }
-function _populateAdvFilterDropdowns() {
-  const catEl = document.getElementById('af-category');
-  if (catEl && catEl.options.length <= 1) categoriesCache.forEach(c => { const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; catEl.appendChild(o); });
-  const assEl = document.getElementById('af-assignee');
-  if (assEl && assEl.options.length <= 1) getTeamUsers().forEach(u => { const o=document.createElement('option'); o.value=u.id; o.textContent=u.fullName; assEl.appendChild(o); });
-}
-function resetAdvFilter() { ['af-category','af-assignee','af-priority','af-date-from','af-date-to','af-source'].forEach(id => { const el=document.getElementById(id); if (el) el.value=''; }); taskCurrentPage=1; renderTaskList(); }
-function _getAdvFilterValues() { return { category:document.getElementById('af-category')?.value||'', assignee:document.getElementById('af-assignee')?.value||'', priority:document.getElementById('af-priority')?.value||'', dateFrom:document.getElementById('af-date-from')?.value||'', dateTo:document.getElementById('af-date-to')?.value||'', source:document.getElementById('af-source')?.value||'' }; }
-function _renderAdvFilterTags(f) {
-  const tagsEl = document.getElementById('adv-filter-tags');
-  const defs = [
-    { key:'category', label:v=>`📂 ${v}`, clear:()=>{document.getElementById('af-category').value='';taskCurrentPage=1;renderTaskList();} },
-    { key:'assignee', label:v=>`👤 ${getUserName(v)}`, clear:()=>{document.getElementById('af-assignee').value='';taskCurrentPage=1;renderTaskList();} },
-    { key:'priority', label:v=>`⚡ ${v}`, clear:()=>{document.getElementById('af-priority').value='';taskCurrentPage=1;renderTaskList();} },
-    { key:'dateFrom', label:v=>`📅 ≥ ${v}`, clear:()=>{document.getElementById('af-date-from').value='';taskCurrentPage=1;renderTaskList();} },
-    { key:'dateTo', label:v=>`📅 ≤ ${v}`, clear:()=>{document.getElementById('af-date-to').value='';taskCurrentPage=1;renderTaskList();} },
-    { key:'source', label:v=>v==='self'?'✍️ บันทึกเอง':'📋 มอบหมาย', clear:()=>{document.getElementById('af-source').value='';taskCurrentPage=1;renderTaskList();} },
-  ];
-  const active = defs.filter(d => f[d.key]);
-  if (tagsEl) tagsEl.innerHTML = active.map(d => `<span class="adv-tag">${d.label(f[d.key])}<button class="adv-tag-remove" onclick="(${d.clear.toString()})()">✕</button></span>`).join('');
-}
-
-function openNewTaskModal() {
-  document.getElementById('task-edit-id').value = '';
-  document.getElementById('task-title').value = '';
-  document.getElementById('task-desc').value = '';
-  document.getElementById('task-priority').value = 'Medium';
-  document.getElementById('task-points').value = isManager() ? 20 : 10;
-  document.getElementById('task-source').value = 'assigned';
-  document.getElementById('task-start-date').value = todayStr();
-  document.getElementById('task-start-time').value = '';
-  document.getElementById('task-deadline').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  document.getElementById('task-end-time').value = '';
-  document.getElementById('task-link').value = '';
-  clearTaskImage();
-  document.getElementById('modal-task-title').textContent = '📋 สร้างงานใหม่';
-  const canAssign = isManager() || currentUser.hasSubordinates;
-  const ptEl = document.getElementById('task-points');
-  if (ptEl?.closest('.input-group')) ptEl.closest('.input-group').style.display = isManager() ? '' : 'none';
-  document.getElementById('group-task-source').style.display = 'block';
-  document.getElementById('group-task-assign').style.display = canAssign ? 'block' : 'none';
-  const sourceEl = document.getElementById('task-source');
-  if (!canAssign) { sourceEl.value = 'self'; const opt = sourceEl.querySelector('option[value="assigned"]'); if (opt) opt.disabled = true; }
-  else { sourceEl.value = 'assigned'; const opt = sourceEl.querySelector('option[value="assigned"]'); if (opt) opt.disabled = false; }
-  populateDropdowns();
-  const assignEl = document.getElementById('task-assign');
-  if (assignEl) {
-    assignEl.value = currentUser.id;
-    assignEl.onchange = function() { sourceEl.value = (this.value === currentUser.id) ? 'self' : 'assigned'; };
-    if (assignEl.value === currentUser.id && !canAssign) sourceEl.value = 'self';
-  }
-  setTimeout(() => initPasteZones(), 100);
-  openModal('modal-task');
-}
-function editTask(id) {
-  const tk = tasksCache.find(x => x.id == id); if (!tk) return;
-  populateDropdowns();
-  document.getElementById('task-edit-id').value = tk.id;
-  document.getElementById('task-title').value = tk.title;
-  document.getElementById('task-desc').value = tk.desc || '';
-  document.getElementById('task-category').value = tk.category;
-  document.getElementById('task-priority').value = tk.priority;
-  document.getElementById('task-points').value = tk.points;
-  document.getElementById('task-source').value = tk.source || 'assigned';
-  document.getElementById('task-start-date').value = tk.startDate || '';
-  document.getElementById('task-start-time').value = tk.startTime || '';
-  document.getElementById('task-deadline').value = tk.deadline || '';
-  document.getElementById('task-end-time').value = tk.endTime || '';
-  document.getElementById('task-link').value = tk.link || '';
-  clearTaskImage();
-  const assignEl = document.getElementById('task-assign'); if (assignEl) assignEl.value = tk.assignedTo;
-  document.getElementById('modal-task-title').textContent = '📋 แก้ไขงาน';
-  const ptEl = document.getElementById('task-points');
-  if (ptEl?.closest('.input-group')) ptEl.closest('.input-group').style.display = isManager() ? '' : 'none';
-  const sourceEl = document.getElementById('task-source');
-  sourceEl.value = tk.source || 'assigned';
-  const canAssign = isAdmin() || (isManager() && usersCache.some(u => u.managerId === currentUser.id));
-  document.getElementById('group-task-source').style.display = 'block';
-  document.getElementById('group-task-assign').style.display = canAssign ? 'block' : 'none';
-  openModal('modal-task');
-}
-async function saveTask() {
-  if (_isSaving) return;
-  const title = document.getElementById('task-title').value.trim();
-  if (!title) return toast('ต้องระบุชื่องาน', 'warning');
-  const editId = document.getElementById('task-edit-id').value;
-  const pointsInput = parseInt(document.getElementById('task-points').value) || 0;
-  const payload = {
-    title, desc: document.getElementById('task-desc').value, category: document.getElementById('task-category').value,
-    priority: document.getElementById('task-priority').value, points: isManager() ? pointsInput : 0,
-    source: document.getElementById('task-source').value,
-    assignedTo: document.getElementById('task-assign').value || currentUser.id,
-    startDate: document.getElementById('task-start-date').value, startTime: document.getElementById('task-start-time').value,
-    deadline: document.getElementById('task-deadline').value, endTime: document.getElementById('task-end-time').value,
-    link: document.getElementById('task-link').value,
-    imageData: tempTaskImages[0]||'', imageData2: tempTaskImages[1]||'', imageData3: tempTaskImages[2]||'',
-  };
-  _isSaving = true; showLoading();
-  try {
-    if (editId) await callAPI('UPDATE_TASK', { id: parseInt(editId), ...payload });
-    else await callAPI('CREATE_TASK', payload);
-    toast('บันทึกเรียบร้อย ✅', 'success'); closeModal('modal-task'); await refreshCurrentPage();
-  } catch(e) { toast(e.message, 'error'); }
-  finally { hideLoading(); _isSaving = false; }
-}
-function markDone(id) {
-  const tk = tasksCache.find(x => x.id == id); if (!tk) return;
-  document.getElementById('done-task-id').value = tk.id;
-  document.getElementById('done-task-title').textContent = tk.title;
-  const modalTitle = document.querySelector('#modal-mark-done .modal-title');
-  modalTitle.innerHTML = tk.status === 'rejected' ? '📤 ส่งงานแก้ไข (Resubmit)' : '✅ ยืนยันจบงาน';
-  clearDoneImage(); openModal('modal-mark-done'); setTimeout(() => initPasteZones(), 100);
-}
-async function confirmMarkDone() {
-  if (_isSaving) return;
-  const id = document.getElementById('done-task-id').value;
-  _isSaving = true; showLoading();
-  try {
-    await callAPI('UPDATE_TASK_STATUS', { id: parseInt(id), status: 'done', imageDone: tempDoneImages[0]||'', imageDone2: tempDoneImages[1]||'', imageDone3: tempDoneImages[2]||'' });
-    toast('✅ งานเสร็จสิ้น! ได้รับคะแนนแล้ว', 'success'); closeModal('modal-mark-done'); await refreshCurrentPage();
-  } catch(e) { toast(e.message, 'error'); }
-  finally { hideLoading(); _isSaving = false; tempDoneImages = []; }
-}
-function approveTask(id) {
-  const tk = tasksCache.find(x => x.id == id); if (!tk) return toast('ไม่พบข้อมูลงาน', 'error');
-  document.getElementById('approve-task-id').value = tk.id;
-  document.getElementById('approve-task-source').value = tk.source || 'assigned';
-  document.getElementById('approve-task-title').textContent = tk.title;
-  const selfNotice = document.getElementById('approve-self-notice'), assignedNotice = document.getElementById('approve-assigned-notice'), pointsGroup = document.getElementById('approve-points-group'), quickPts = document.getElementById('approve-quick-pts'), lateInfo = document.getElementById('approve-late-info');
-  if (tk.source === 'self') {
-    selfNotice.style.display='flex'; assignedNotice.style.display='none'; pointsGroup.style.display=''; quickPts.style.display='flex';
-    document.getElementById('approve-points-input').value = '';
-  } else {
-    selfNotice.style.display='none'; assignedNotice.style.display='flex'; pointsGroup.style.display='none'; quickPts.style.display='none';
-    document.getElementById('approve-base-pts').textContent = tk.points;
-    const today = todayStr(); const completedAt = tk.completedAt ? tk.completedAt.substring(0,10) : today; const deadline = tk.deadline || '';
-    if (deadline && completedAt > deadline) {
-      const diffDays = Math.ceil((new Date(completedAt) - new Date(deadline)) / 86400000);
-      const penalty = Math.min(50, diffDays*5); const netPts = Math.max(1, Math.floor(tk.points*(1-penalty/100)));
-      lateInfo.style.display='block'; lateInfo.innerHTML = `⚠️ ส่งงานล่าช้า ${diffDays} วัน — จะหัก ${penalty}% → คะแนนสุทธิ <strong>${netPts}</strong> คะแนน`;
-    } else lateInfo.style.display='none';
-  }
-  openModal('modal-approve-points');
-}
-function setApprovePoints(n) { const el = document.getElementById('approve-points-input'); if (el) el.value = n; }
-async function confirmApproveWithPoints() {
-  if (_isSaving) return;
-  const id = document.getElementById('approve-task-id').value, source = document.getElementById('approve-task-source').value;
-  let approvedPoints = null;
-  if (source === 'self') {
-    const raw = parseInt(document.getElementById('approve-points-input').value);
-    if (!raw || raw<1) return toast('กรุณาระบุคะแนนอย่างน้อย 1 คะแนน', 'warning');
-    approvedPoints = raw;
-  }
-  _isSaving = true; showLoading();
-  try {
-    const res = await callAPI('APPROVE_TASK', { id: parseInt(id), approvedPoints });
-    toast(`👍 อนุมัติแล้ว! ให้คะแนน ${res.pointsAwarded||0} คะแนน`, 'success');
-    closeModal('modal-approve-points'); await refreshCurrentPage();
-  } catch(e) { toast(e.message, 'error'); }
-  finally { hideLoading(); _isSaving = false; }
-}
-async function cancelTask(id) {
-  const reason = prompt('เหตุผลที่ยกเลิก (ไม่จำเป็น):');
-  showLoading();
-  try { await callAPI('CANCEL_TASK', { id, reason }); toast('ยกเลิกงานแล้ว', 'success'); await refreshCurrentPage(); }
-  catch(e) { toast(e.message, 'error'); } finally { hideLoading(); }
-}
-async function deleteTask(id) {
-  if (!confirm('ต้องการลบงานนี้แบบถาวรหรือไม่?')) return;
-  showLoading();
-  try { await callAPI('DELETE_TASK', { id }); toast('ลบงานเรียบร้อย', 'info'); await refreshCurrentPage(); }
-  catch(e) { toast(e.message, 'error'); } finally { hideLoading(); }
-}
-function openRejectModal(id) {
-  const tk = tasksCache.find(t => t.id == id); if (!tk) return toast('ไม่พบข้อมูลงาน', 'error');
-  document.getElementById('reject-task-id').value = tk.id;
-  document.getElementById('reject-task-title').textContent = tk.title;
-  document.getElementById('reject-reason').value = '';
-  openModal('modal-reject');
-}
-async function confirmRejectTask() {
-  const id = document.getElementById('reject-task-id').value, reason = document.getElementById('reject-reason').value.trim();
-  if (!reason) return toast('กรุณาระบุเหตุผลในการตีกลับ', 'warning');
-  showLoading();
-  try {
-    await callAPI('REJECT_TASK', { id: parseInt(id), reason });
-    toast('↩️ ตีกลับงานเรียบร้อย', 'info'); closeModal('modal-reject'); closeModal('modal-task-detail'); await refreshCurrentPage();
-  } catch(e) { toast(e.message, 'error'); } finally { hideLoading(); }
-}
-function viewTaskDetail(id) {
-  const tk = tasksCache.find(x => x.id == id); if (!tk) return toast('ไม่พบข้อมูลงาน', 'error');
-  const isManagerUser = isManager();
-  const priorityMap = { Low:{label:'ต่ำ',color:'#10B981'}, Medium:{label:'กลาง',color:'#3B82F6'}, High:{label:'สูง',color:'#F59E0B'}, Critical:{label:'วิกฤต',color:'#EF4444'} };
-  const prio = priorityMap[tk.priority] || { label:tk.priority, color:'#94A3B8' };
-  let daysInfo = '';
-  if (tk.deadline && tk.status!=='done' && tk.status!=='cancelled') {
-    const diff = Math.ceil((new Date(tk.deadline) - new Date())/86400000);
-    if (diff<0) daysInfo = `<span style="color:#FCA5A5">เกินกำหนด ${Math.abs(diff)} วัน</span>`;
-    else if (diff===0) daysInfo = `<span style="color:#FCD34D">ครบกำหนดวันนี้</span>`;
-    else daysInfo = `<span style="color:#6EE7B7">เหลือ ${diff} วัน</span>`;
-  }
-  const timeline = [];
-  timeline.push({ cls:'', text:'สร้างงาน', sub:`โดย ${getUserName(tk.createdBy)}` });
-  if (tk.startDate) timeline.push({ cls:'', text:'วันที่เริ่มต้น', sub:`${fmtDate(tk.startDate)}${tk.startTime?' '+tk.startTime:''}` });
-  if (tk.completedAt) timeline.push({ cls:'done', text:'เสร็จสิ้น', sub:fmtDateTime(tk.completedAt) });
-  if (tk.approvedAt) timeline.push({ cls:'approved', text:'อนุมัติแล้ว', sub:`โดย ${getUserName(tk.approvedBy)} · ${fmtDateTime(tk.approvedAt)}` });
-  const beforeImgs = [tk.imageData, tk.imageData2, tk.imageData3].filter(isValidImage);
-  const doneImgs = [tk.imageDone, tk.imageDone2, tk.imageDone3].filter(isValidImage);
-  const renderAttachment = (link) => {
-    if (!link || link.trim()==='') return '';
-    if (link.startsWith('data:') || link.startsWith('http')) {
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;margin-top:6px;">
-        <span style="font-size:1.8rem;">📎</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:.88rem;">ไฟล์แนบ</div></div>
-        <a href="${link}" target="_blank" rel="noopener" download style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.8rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด/ดาวน์โหลด</a>
-      </div>`;
-    }
-    return '';
-  };
-  const body = `
-    <div class="detail-hero"><div class="detail-hero-title">${tk.title}</div>
-      <div class="detail-hero-badges"><span class="detail-hero-badge" style="background:${prio.color}88">${prio.label}</span><span class="detail-hero-badge">${statusLabel(tk.status)}</span><span class="detail-hero-badge">⭐ ${tk.points} pt</span>
-      ${tk.source==='self'?`<span class="detail-hero-badge">✍️ บันทึกเอง</span>`:`<span class="detail-hero-badge">📋 มอบหมาย</span>`}</div>
-      ${tk.status!=='cancelled'?`<div class="detail-progress-wrap"><div class="detail-progress-label"><span>ความคืบหน้า</span><span>${daysInfo||(tk.status==='done'?'✅':'')}</span></div></div>`:''}
-    </div>
-    <div class="detail-section"><div class="detail-section-title">ข้อมูลทั่วไป</div>
-      <div class="detail-row"><span class="detail-label">📂 ประเภทงาน</span><span class="detail-value">${tk.category||'—'}</span></div>
-      <div class="detail-row"><span class="detail-label">👤 มอบหมายให้</span><span class="detail-value">${getUserName(tk.assignedTo)}</span></div>
-      <div class="detail-row"><span class="detail-label">👤 สร้างโดย</span><span class="detail-value">${getUserName(tk.createdBy)}</span></div>
-      <div class="detail-row"><span class="detail-label">📅 วันที่เริ่ม</span><span class="detail-value">${fmtDate(tk.startDate)}${isValidTime(tk.startTime)?` · ${tk.startTime}`:''}</span></div>
-      <div class="detail-row"><span class="detail-label">🏁 กำหนดส่ง</span><span class="detail-value">${fmtDate(tk.deadline)}${isValidTime(tk.endTime)?` · ${tk.endTime}`:''}</span></div>
-      ${tk.link && tk.link.trim() ? `<div class="detail-row"><span class="detail-label">📁 ไฟล์แนบ</span><span class="detail-value" style="flex:1">${renderAttachment(tk.link)}</span></div>` : ''}
-    </div>
-    ${tk.desc?`<div class="detail-section"><div class="detail-section-title">รายละเอียด</div><div class="detail-desc-box">${tk.desc}</div></div>`:''}
-    ${beforeImgs.length?`<div class="detail-section"><div class="detail-section-title">📎 รูปก่อนเริ่มงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${beforeImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
-    ${doneImgs.length?`<div class="detail-section"><div class="detail-section-title" style="color:var(--success)">✅ รูปหลักฐานการส่งงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${doneImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--success);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
-    <div class="detail-section"><div class="detail-section-title">ประวัติสถานะ</div><div class="detail-timeline">${timeline.map(ev=>`<div class="detail-timeline-item ${ev.cls}"><div class="detail-timeline-text">${ev.text}</div><div class="detail-timeline-sub">${ev.sub}</div></div>`).join('')}</div></div>`;
-  let actions = `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail')" style="flex:1">ปิด</button>`;
-  if (canEditTask(tk)) actions += `<button class="btn btn-primary" onclick="closeModal('modal-task-detail');editTask(${tk.id})" style="flex:1">✏️ แก้ไข</button>`;
-  if (tk.status!=='done' && tk.status!=='cancelled' && canManageTaskFE(tk)) {
-    const isRejected = tk.status==='rejected';
-    actions += `<button class="btn ${isRejected?'btn-warning':'btn-success'}" onclick="closeModal('modal-task-detail');markDone(${tk.id})" style="flex:1">${isRejected?'📤 ส่งงานใหม่':'✅ เสร็จสิ้น'}</button>`;
-  }
-  if (isManagerUser && tk.status==='done' && !tk.approvedAt) {
-    actions += `<button class="btn btn-danger" onclick="closeModal('modal-task-detail');openRejectModal(${tk.id})" style="flex:1">↩️ ตีกลับ</button>
-      <button class="btn btn-warning" onclick="closeModal('modal-task-detail');approveTask(${tk.id})" style="flex:1">👍 อนุมัติ</button>`;
-  }
-  document.getElementById('task-detail-body').innerHTML = body;
-  document.getElementById('task-detail-actions').innerHTML = actions;
-  document.getElementById('detail-modal-title').textContent = 'รายละเอียดงาน';
-  openModal('modal-task-detail');
-}
-function renderPaginationControls(totalPages) {
-  let container = document.getElementById('task-pagination');
-  if (!container) { document.getElementById('page-tasks').insertAdjacentHTML('beforeend', '<div id="task-pagination" style="display:flex; justify-content:center; gap:6px; margin-top:20px; padding-bottom: 20px; flex-wrap:wrap;"></div>'); container = document.getElementById('task-pagination'); }
-  if (totalPages <= 1) { container.innerHTML = ''; return; }
-  let html = `<button class="btn btn-secondary btn-sm" ${taskCurrentPage===1?'disabled style="opacity:0.4"':`onclick="changeTaskPage(${taskCurrentPage-1})"`}>◀</button>`;
-  for (let i=1;i<=totalPages;i++) {
-    if (i===1||i===totalPages||(i>=taskCurrentPage-1&&i<=taskCurrentPage+1)) html += `<button class="btn ${i===taskCurrentPage?'btn-primary':'btn-secondary'} btn-sm" onclick="changeTaskPage(${i})">${i}</button>`;
-    else if (i===taskCurrentPage-2||i===taskCurrentPage+2) html += `<span style="align-self:center; color:var(--text-sub);">...</span>`;
-  }
-  html += `<button class="btn btn-secondary btn-sm" ${taskCurrentPage===totalPages?'disabled style="opacity:0.4"':`onclick="changeTaskPage(${taskCurrentPage+1})"`}>▶</button>`;
-  container.innerHTML = html;
-}
-function changeTaskPage(newPage) { taskCurrentPage = newPage; renderTaskList(); window.scrollTo({top:0,behavior:'smooth'}); }
-
-/* ══════════════════ CATEGORIES ══════════════════ */
-async function loadCategories() { try { const res = await callAPI('GET_CATEGORIES'); categoriesCache = res.data || []; renderCategoryList(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
-function renderCategoryList() {
-  const el = document.getElementById('category-list'); if (!el) return;
-  el.innerHTML = categoriesCache.length ? categoriesCache.map(c => `<div class="cat-item"><span>📂 ${c.name}</span>${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id})">🗑</button>`:''}</div>`).join('') : `<div class="empty-state"><p>ยังไม่มีประเภทงาน</p></div>`;
-}
-async function addCategory() {
-  const name = document.getElementById('new-category-name').value.trim();
-  if (!name) return toast('ระบุชื่อประเภทงาน', 'warning');
-  showLoading();
-  try { await callAPI('CREATE_CATEGORY', { name }); toast('บันทึกเรียบร้อย ✅', 'success'); document.getElementById('new-category-name').value=''; await loadCategories(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-async function deleteCategory(id) {
-  if (!confirm('ต้องการลบประเภทงานนี้?')) return;
-  showLoading();
-  try { await callAPI('DELETE_CATEGORY', { id }); toast('ลบแล้ว', 'info'); await loadCategories(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ CALENDAR ══════════════════ */
-const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS_TH = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.']; const DAYS_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-async function renderCalendar() {
-  const months = currentLang==='th'?MONTHS_TH:MONTHS_EN, days = currentLang==='th'?DAYS_TH:DAYS_EN;
-  const yearDisplay = currentLang==='th'?calYear+543:calYear;
-  document.getElementById('cal-month-title').textContent = `${months[calMonth]} ${yearDisplay}`;
-  const grid = document.getElementById('calendar-grid'); const today = todayStr();
-  const filterEl = document.getElementById('cal-staff-filter');
-  if (filterEl && filterEl.options.length<=1) {
-    let opts = `<option value="">-- ตารางรวมทั้งหมด --</option><option value="${currentUser.id}">👤 ตารางของฉัน</option>`;
-    let filterUsers = isAdmin()?usersCache:(isManager()?usersCache.filter(u=>u.managerId===currentUser.id):[]);
-    filterUsers.forEach(u => { if (u.id!==currentUser.id) opts += `<option value="${u.id}">${u.fullName}</option>`; });
-    filterEl.innerHTML = opts; if (!isManager()) filterEl.value = currentUser.id;
-  }
-  const selectedStaff = filterEl ? filterEl.value : '';
-  let html = days.map(d => `<div class="cal-day-header">${d}</div>`).join('');
-  const firstDay = new Date(calYear,calMonth,1).getDay(), daysInMonth = new Date(calYear,calMonth+1,0).getDate(), prevMonthDays = new Date(calYear,calMonth,0).getDate();
-  for (let i=firstDay-1;i>=0;i--) html += `<div class="cal-day other-month"><div class="cal-day-num">${prevMonthDays-i}</div></div>`;
-  try { const res = await callAPI('GET_SHIFTS'); shiftsCache = res.data || []; } catch(e) { shiftsCache = []; }
-  for (let d=1; d<=daysInMonth; d++) {
-    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const currentCellDate = new Date(calYear,calMonth,d); const dayOfWeek = currentCellDate.getDay();
-    const isToday = ds===today, isWeekend = (dayOfWeek===0||dayOfWeek===6);
-    const dayShifts = shiftsCache.filter(s => s.date===ds && (!selectedStaff||s.staffId==selectedStaff||s.type==='Holiday'||s.type==='CompanyEvent'));
-    const dayTasks = tasksCache.filter(tk => tk.deadline===ds && tk.status!=='done' && tk.status!=='cancelled' && (!selectedStaff||tk.assignedTo==selectedStaff));
-    const isHoliday = dayShifts.some(s => s.type==='Holiday');
-    let cls = 'cal-day' + (isToday?' today':'') + (isHoliday?' holiday':'') + (isWeekend&&!isHoliday&&!isToday?' weekend':'');
-    let eventsHTML = dayShifts.map(s => {
-      if (s.type==='Holiday') return `<div class="cal-event holiday">🏖️ ${s.desc||'วันหยุด'}</div>`;
-      if (s.type==='CompanyEvent') return `<div class="cal-event event">📢 ${s.desc||'ประกาศ'}</div>`;
-      if (s.type==='OT') return `<div class="cal-event ot">⏱️ ${getUserName(s.staffId).split(' ')[0]}</div>`;
-      return `<div class="cal-event shift">👤 ${getUserName(s.staffId).split(' ')[0]}</div>`;
-    }).join('');
-    eventsHTML += dayTasks.slice(0,3).map(tk => `<div class="cal-event task">📌 ${tk.title.substring(0,10)}</div>`).join('');
-    if (dayTasks.length>3) eventsHTML += `<div class="cal-event" style="background:transparent;color:var(--text-sub);text-align:center;font-weight:bold;">+${dayTasks.length-3} งาน</div>`;
-    html += `<div class="${cls}" onclick="showDayDetail('${ds}')"><div class="cal-day-num">${d}</div>${eventsHTML}</div>`;
-  }
-  const totalCells = firstDay+daysInMonth, remaining = totalCells%7?7-(totalCells%7):0;
-  for (let i=1;i<=remaining;i++) html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
-  grid.innerHTML = html;
-}
-function showDayDetail(ds) {
-  const filterEl = document.getElementById('cal-staff-filter'); const selectedStaff = filterEl?filterEl.value:'';
-  const dayShifts = shiftsCache.filter(s => s.date===ds && (!selectedStaff||s.staffId==selectedStaff||s.type==='Holiday'||s.type==='CompanyEvent'));
-  const dayTasks = tasksCache.filter(tk => tk.deadline===ds && (!selectedStaff||tk.assignedTo==selectedStaff));
-  const label = new Date(ds+'T00:00:00').toLocaleDateString(currentLang==='th'?'th-TH':'en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  let html = `<div style="font-weight:700;margin-bottom:14px;font-size:1rem">${label}</div>`;
-  if (dayShifts.length) {
-    html += `<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📅 กิจกรรม / ตารางเวร</div>`;
-    dayShifts.forEach(s => {
-      let icon='👤', typeLbl=s.type;
-      if (s.type==='Holiday') { icon='🏖️'; typeLbl='วันหยุด'; } if (s.type==='OT') icon='⏱️'; if (s.type==='CompanyEvent') { icon='📢'; typeLbl='ประกาศบริษัท'; }
-      let staffName = s.staffId?getUserName(s.staffId)+' — ':''; if (s.type==='Holiday'||s.type==='CompanyEvent') staffName='';
-      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:8px">
-        <span>${icon} ${staffName}${typeLbl}${s.desc?' · '+s.desc:''}</span>
-        ${isManager()?`<div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="editShift(${s.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteShift(${s.id})">🗑</button></div>`:''}
-      </div>`;
-    });
-  }
-  if (dayTasks.length) {
-    html += `<div style="font-weight:600;margin:12px 0 8px;color:var(--primary)">📋 งานที่ครบกำหนด</div>`;
-    dayTasks.forEach(tk => { html += `<div style="padding:10px;background:var(--bg);border-radius:8px;margin-bottom:8px;border-left:4px solid ${priorityColor(tk.priority)}"><div style="font-weight:600">${tk.title}</div><div style="font-size:.8rem;color:var(--text-sub);margin-top:3px">👤 ${getUserName(tk.assignedTo)} · ${statusLabel(tk.status)}</div></div>`; });
-  }
-  if (!dayShifts.length && !dayTasks.length) html += `<div class="empty-state"><div class="empty-icon">📆</div><p>ไม่มีกิจกรรมในวันนี้</p></div>`;
-  document.getElementById('shift-detail-body').innerHTML = html;
-  document.getElementById('shift-detail-footer').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('modal-shift-detail')">ปิด</button><button class="btn btn-primary" onclick="closeModal('modal-shift-detail');openOTModal('${ds}')">📝 บันทึก OT</button>`;
-  openModal('modal-shift-detail');
-}
-async function saveShift() {
-  const date = document.getElementById('shift-date').value; if (!date) return toast('ต้องระบุวันที่', 'warning');
-  const editId = document.getElementById('shift-edit-id').value;
-  const payload = { date, type: document.getElementById('shift-type').value, staffId: document.getElementById('shift-staff').value || null, desc: document.getElementById('shift-desc').value };
-  showLoading();
-  try { if (editId) await callAPI('UPDATE_SHIFT', { id: parseInt(editId), ...payload }); else await callAPI('CREATE_SHIFT', payload); toast('บันทึกเรียบร้อย ✅', 'success'); closeModal('modal-shift'); renderCalendar(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-function editShift(id) {
-  const s = shiftsCache.find(x => x.id == id); if (!s) return;
-  document.getElementById('shift-edit-id').value = s.id; document.getElementById('shift-date').value = s.date;
-  document.getElementById('shift-type').value = s.type; document.getElementById('shift-staff').value = s.staffId || '';
-  document.getElementById('shift-desc').value = s.desc || ''; closeModal('modal-shift-detail'); openModal('modal-shift');
-}
-async function deleteShift(id) {
-  if (!confirm('ต้องการลบตารางเวรนี้?')) return; showLoading();
-  try { await callAPI('DELETE_SHIFT', { id }); toast('ลบแล้ว', 'info'); closeModal('modal-shift-detail'); renderCalendar(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-function changeMonth(dir) { calMonth += dir; if (calMonth>11) { calMonth=0; calYear++; } if (calMonth<0) { calMonth=11; calYear--; } renderCalendar(); }
-function openOTModal(date=null) { document.getElementById('ot-date').value = date || todayStr(); document.getElementById('ot-type').value='OT'; document.getElementById('ot-desc').value=''; openModal('modal-ot'); }
-async function saveOT() {
-  const date = document.getElementById('ot-date').value; if (!date) return toast('กรุณาเลือกวันที่', 'warning');
-  showLoading();
-  try { await callAPI('LOG_OT', { date, type: document.getElementById('ot-type').value, desc: document.getElementById('ot-desc').value.trim() }); toast('บันทึกเรียบร้อย ✅', 'success'); closeModal('modal-ot'); renderCalendar(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ KPI & REWARDS ══════════════════ */
-async function loadKPI() {
-  try {
-    const [profileRes, rewardsRes] = await Promise.all([callAPI('GET_PROFILE'), callAPI('GET_REWARDS')]);
-    const monthlyPoints = profileRes.data.monthlyPoints || 0;
-    const allRewards = rewardsRes.data || [];
-    const rewards = allRewards.filter(r => isAdmin() || r.createdBy===currentUser.id || r.createdBy===currentUser.managerId);
-    const sortedRewards = [...rewards].sort((a,b) => a.targetPoints-b.targetPoints);
-    const nextReward = sortedRewards.find(r => r.targetPoints > monthlyPoints);
-    const targetReward = nextReward || sortedRewards[sortedRewards.length-1];
-    const target = targetReward?.targetPoints || 400;
-    const pct = Math.min(100, Math.round(monthlyPoints/target*100));
-    document.getElementById('kpi-page-score').textContent = monthlyPoints;
-    document.getElementById('kpi-page-score-label').textContent = '⭐ คะแนนเดือนนี้';
-    document.getElementById('kpi-page-bar').style.width = pct+'%';
-    document.getElementById('kpi-page-target').textContent = targetReward ? `${t('dash.target')} "${targetReward.name}" (${target} ${t('dash.pointsMonth')}) — ${pct}%` : `${t('dash.target')} ${target} ${t('dash.pointsMonth')} — ${pct}%`;
-    document.getElementById('reward-list').innerHTML = rewards.length ? rewards.map(r => `
-      <div style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="font-weight:700">🎁 ${r.name}</div><div style="font-size:.83rem;color:var(--text-sub);margin-top:3px">${r.detail||''}</div>
-        <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge badge-navy">⭐ ${r.targetPoints} pts</span><span class="badge badge-gray">${r.period==='monthly'?'ประจำเดือน':'ประจำสัปดาห์'}</span>
-        ${monthlyPoints>=r.targetPoints?`<span class="badge badge-green">🎉 ได้รับแล้ว!</span>`:''}
-        ${(isAdmin()||(isManager()&&r.createdBy===currentUser.id))?`<button class="btn btn-danger btn-sm" onclick="deleteReward(${r.id})">🗑</button>`:''}</div></div>`).join('') : `<div class="empty-state"><div class="empty-icon">🎁</div><p>ยังไม่มีรางวัลของทีมคุณ</p></div>`;
-    renderLeaderboard();
-  } catch(e) { toast(e.message,'error'); }
-}
-async function renderLeaderboard() {
-  const lb = document.getElementById('leaderboard-list'); if (!lb) return;
-  if (!isManager() && !isAdmin()) { lb.innerHTML = `<div class="empty-state"><p>เฉพาะ Admin/หัวหน้าทีมเท่านั้น</p></div>`; return; }
-  try {
-    const res = await callAPI('GET_USERS'); let users = res.data || [];
-    if (isManager() && !isAdmin()) users = users.filter(u => u.id===currentUser.id || u.managerId===currentUser.id);
-    users = users.sort((a,b) => (b.points||0)-(a.points||0));
-    const anon = document.getElementById('lb-anon')?.checked; const max = users[0]?.points || 1; const medals=['🥇','🥈','🥉'];
-    lb.innerHTML = users.map((u,i) => `<div class="lb-row"><div class="rank-badge" style="background:${['#FEF3C7','#F1F5F9','#FEF2F2'][i]||'var(--bg)'};color:${['#D97706','#64748B','#B45309'][i]||'var(--text-sub)'}">${medals[i]||(i+1)}</div>
-      <div style="flex:1"><div style="font-weight:600">${anon?`${t('lb.employee')} #${i+1}`:u.fullName}</div><div style="font-size:.76rem;color:var(--text-sub)">${u.department||'—'}</div></div>
-      <div style="width:100px"><div class="progress-bar-bg" style="height:6px"><div class="progress-bar-fill" style="width:${Math.round((u.points||0)/max*100)}%"></div></div></div>
-      <div style="font-weight:800;color:var(--primary);min-width:60px;text-align:right">${u.points||0} pt</div></div>`).join('') || `<div class="empty-state"><p>ไม่มีข้อมูล</p></div>`;
-  } catch(e) { lb.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
-}
-async function saveReward() {
-  const name = document.getElementById('reward-name').value.trim(); if (!name) return toast('ต้องระบุชื่อรางวัล', 'warning');
-  showLoading();
-  try {
-    await callAPI('CREATE_REWARD', { name, targetPoints: parseInt(document.getElementById('reward-target-pts').value)||400, detail: document.getElementById('reward-detail').value, period: document.getElementById('reward-period').value });
-    toast('บันทึกเรียบร้อย ✅', 'success'); closeModal('modal-reward'); loadKPI();
-  } catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-async function deleteReward(id) {
-  if (!confirm('ต้องการลบรางวัลนี้?')) return; showLoading();
-  try { await callAPI('DELETE_REWARD', { id }); toast('ลบแล้ว', 'info'); loadKPI(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ DEDUCT POINTS ══════════════════ */
-function openDeductModal(userId) {
-  populateDropdowns();
-  document.getElementById('deduct-points').value = ''; document.getElementById('deduct-reason').value = '';
-  document.getElementById('deduct-category').value = 'Discipline'; document.getElementById('deduct-preview').style.display = 'none';
-  if (userId) document.getElementById('deduct-user-select').value = userId;
-  openModal('modal-deduct');
-}
-function previewDeduct() {
-  const sel = document.getElementById('deduct-user-select'); const pts = parseInt(document.getElementById('deduct-points').value)||0;
-  if (!sel.value) return toast('เลือกพนักงาน', 'warning'); if (pts<=0) return toast('ระบุคะแนนที่ต้องการตัด', 'warning');
-  const opt = sel.options[sel.selectedIndex]; const current = parseInt(opt.dataset.points)||0; const after = Math.max(0,current-pts); const actual = current-after;
-  document.getElementById('deduct-before-val').textContent = `${current} pts`;
-  document.getElementById('deduct-amt-val').textContent = `-${actual} pts`;
-  document.getElementById('deduct-after-val').textContent = `${after} pts`;
-  document.getElementById('deduct-preview').style.display = 'block';
-}
-async function confirmDeduct() {
-  const userId = document.getElementById('deduct-user-select').value;
-  const points = parseInt(document.getElementById('deduct-points').value)||0;
-  const reason = document.getElementById('deduct-reason').value.trim();
-  const category = document.getElementById('deduct-category').value;
-  if (!userId) return toast('เลือกพนักงาน', 'warning'); if (points<=0) return toast('ระบุคะแนนที่ต้องการตัด', 'warning'); if (!reason) return toast('ต้องระบุเหตุผล', 'warning');
-  if (!confirm(`ยืนยันตัดคะแนน ${points} คะแนน?\nเหตุผล: ${reason}`)) return;
-  showLoading();
-  try {
-    const res = await callAPI('DEDUCT_POINTS', { userId, points, reason, category });
-    toast(`ตัดคะแนนสำเร็จ: ${res.before} → ${res.after} pts`, 'success'); closeModal('modal-deduct');
-    const uRes = await callAPI('GET_USERS'); usersCache = uRes.data || [];
-    if (currentPage==='users') renderUsersTable(); if (currentPage==='deductions') loadDeductions(); if (currentPage==='kpi') renderLeaderboard();
-  } catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-async function loadDeductions() {
-  const filterEl = document.getElementById('deduct-filter-user'); const userId = filterEl?filterEl.value:'';
-  try {
-    const res = await callAPI('GET_DEDUCTIONS', userId ? { userId } : {}); const data = res.data || [];
-    const tbody = document.getElementById('deductions-table-body'); if (!tbody) return;
-    tbody.innerHTML = data.length ? data.map((d,i) => `<tr><td>${i+1}</td><td><strong>${d.userName}</strong></td><td>${d.adminName}</td>
-      <td><strong style="color:var(--danger)">-${d.actual}</strong> pts</td><td><span class="badge badge-orange">${d.category}</span></td>
-      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.reason}">${d.reason}</td>
-      <td>${d.before}</td><td><strong style="color:var(--primary)">${d.after}</strong></td><td>${fmtDateTime(d.ts)}</td></tr>`).join('') : `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-sub)">${t('deduct.noHistory')}</td></tr>`;
-  } catch(e) { toast(e.message,'error'); }
-}
-
-/* ══════════════════ SALARY ══════════════════ */
-function calcSalary() {
-  const gv = id => parseFloat(document.getElementById(id)?.value)||0;
-  const base = gv('sal-base'); const hourly = base/26/8;
-  const gross = base + (gv('sal-ot10')*hourly*1.0) + (gv('sal-ot15')*hourly*1.5) + (gv('sal-ot20')*hourly*2.0) + (gv('sal-ot30')*hourly*3.0) + gv('sal-allowance') + gv('sal-position') + gv('sal-other');
-  const deduct = gv('sal-sso') + gv('sal-fund') + gv('sal-tax') + gv('sal-deduct-other'); const net = Math.max(0, gross-deduct);
-  const fmt = n => '฿' + Math.round(n).toLocaleString('th-TH');
-  document.getElementById('r-gross').textContent = fmt(gross); document.getElementById('r-total-deduct').textContent = '-'+fmt(deduct); document.getElementById('sal-net').textContent = fmt(net);
-}
-function resetSalary() { ['sal-base','sal-ot10','sal-ot15','sal-ot20','sal-ot30','sal-allowance','sal-position','sal-other','sal-sso','sal-fund','sal-tax','sal-deduct-other'].forEach(id => { const el=document.getElementById(id); if (el) el.value=''; }); calcSalary(); }
-
-/* ══════════════════ USERS ══════════════════ */
-async function loadUsers() { try { const res = await callAPI('GET_USERS'); usersCache = res.data || []; renderUsersTable(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
-function renderUsersTable() {
-  document.getElementById('users-table-body').innerHTML = usersCache.map((u,i) => `<tr><td>${i+1}</td><td><strong>${u.fullName}</strong></td>
-    <td><code style="background:var(--bg);padding:2px 7px;border-radius:5px;font-size:.82rem">${u.username||'-'}</code></td>
-    <td>${u.position||'—'}</td><td>${u.department||'—'}</td>
-    <td><span class="badge ${u.role==='Admin'?'badge-navy':(u.role==='Manager'?'badge-orange':'badge-green')}">${u.role==='Manager'?t('role.manager'):u.role}</span></td>
-    <td>${u.phone||'—'}</td><td><strong style="color:var(--primary)">${u.points||0}</strong> <span style="color:var(--text-sub);font-size:.8rem">pt</span></td>
-    <td><div style="display:flex;gap:6px">
-      <button class="btn btn-secondary btn-sm" onclick="editUser('${u.id}')">✏️</button>
-      <button class="btn btn-warning btn-sm" onclick="openDeductModal('${u.id}')">⚠️</button>
-      ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}
-    </div></td></tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text-sub);padding:24px">ไม่มีผู้ใช้</td></tr>`;
-}
-function openNewUserModal() {
-  toast(currentLang==='th' ? 'การเพิ่มผู้ใช้ใหม่ต้องทำผ่าน SQL Editor ด้วยฟังก์ชัน add_employee() (ดูคู่มือ)' : 'Add new users via SQL Editor using add_employee()', 'info', 6000);
-  ['user-edit-id','user-fullname','user-username','user-position','user-phone'].forEach(id => { const el=document.getElementById(id); if (el) el.value=''; });
-  document.getElementById('user-role').value='User'; document.getElementById('user-department').value='Engineering'; document.getElementById('user-manager').value='';
-  document.getElementById('modal-user-title').textContent = '👤 เพิ่มผู้ใช้ใหม่'; populateDropdowns(); openModal('modal-user');
-}
-function editUser(id) {
-  const u = usersCache.find(x => x.id == id); if (!u) return;
-  document.getElementById('user-edit-id').value = u.id; document.getElementById('user-fullname').value = u.fullName;
-  document.getElementById('user-username').value = u.username || ''; document.getElementById('user-position').value = u.position || '';
-  document.getElementById('user-phone').value = u.phone || ''; document.getElementById('user-department').value = u.department || 'Engineering';
-  document.getElementById('user-role').value = u.role || 'User'; populateDropdowns();
-  document.getElementById('user-manager').value = u.managerId || '';
-  document.getElementById('modal-user-title').textContent = '👤 แก้ไขผู้ใช้'; openModal('modal-user');
-}
-async function saveUser() {
-  const fullName = document.getElementById('user-fullname').value.trim(); const username = document.getElementById('user-username').value.trim();
-  if (!fullName || !username) return toast('กรุณากรอกชื่อและ Username', 'warning');
-  const editId = document.getElementById('user-edit-id').value;
-  if (!editId) return toast(currentLang==='th' ? 'กรุณาเพิ่มผู้ใช้ใหม่ผ่าน SQL Editor (ฟังก์ชัน add_employee) ตามคู่มือ' : 'Please add new users via SQL Editor', 'warning');
-  const payload = { fullName, username, position: document.getElementById('user-position').value, department: document.getElementById('user-department').value, role: document.getElementById('user-role').value, phone: document.getElementById('user-phone').value, managerId: document.getElementById('user-manager').value || '' };
-  showLoading();
-  try { await callAPI('UPDATE_USER', { id: editId, ...payload }); toast('บันทึกเรียบร้อย ✅', 'success'); closeModal('modal-user'); await loadUsers(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-async function deleteUser(id) {
-  if (id === currentUser.id) return toast('ไม่สามารถลบบัญชีตัวเองได้', 'error');
-  if (!confirm('ต้องการลบผู้ใช้นี้?')) return; showLoading();
-  try { await callAPI('DELETE_USER', { id }); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ ORG ══════════════════ */
-async function loadOrg() {
-  const el = document.getElementById('org-chart-body');
-  try {
-    const res = await callAPI('GET_ORG'); const users = res.data || []; const roots = users.filter(u => !u.managerId);
-    function renderNode(u) {
-      const children = users.filter(x => x.managerId === u.id);
-      return `<div class="org-node"><div class="org-node-avatar">${u.fullName.charAt(0).toUpperCase()}</div>
-        <div style="flex:1"><div style="font-weight:700">${u.fullName}</div><div style="font-size:.78rem;color:var(--text-sub)">${u.position||'—'} · ${u.department||'—'}</div></div>
-        <span class="badge ${u.role==='Admin'?'badge-navy':(u.role==='Manager'?'badge-orange':'badge-green')}">${u.role==='Manager'?t('role.manager'):u.role}</span>
-        <span style="font-size:.78rem;color:var(--warning);font-weight:700">${u.points||0} pt</span></div>
-        ${children.length?`<div class="org-children">${children.map(c=>renderNode(c)).join('')}</div>`:''}`;
-    }
-    el.innerHTML = roots.length ? roots.map(r => renderNode(r)).join('') : `<div class="empty-state"><p>ยังไม่มีโครงสร้างองค์กร</p></div>`;
-  } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
-}
-
-/* ══════════════════ REPORTS ══════════════════ */
-let lastReportData = null;
-function initReports() { if (!document.getElementById('report-from').value) { const now=new Date(); document.getElementById('report-from').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`; document.getElementById('report-to').value = todayStr(); } }
-async function loadReport() {
-  const from = document.getElementById('report-from').value, to = document.getElementById('report-to').value;
-  if (!from||!to) return toast('เลือกช่วงวันที่ด้วย', 'warning'); if (from>to) return toast('วันที่เริ่มต้องน้อยกว่าวันสิ้นสุด', 'warning');
-  showLoading();
-  try { const res = await callAPI('EXPORT_REPORT', { dateFrom: from, dateTo: to }); lastReportData = res.data; renderReportResult(lastReportData); toast('โหลดรายงานเรียบร้อย ✅', 'success'); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-function renderReportResult(data) {
-  const { summary, tasks } = data;
-  document.getElementById('report-result').style.display = '';
-  document.getElementById('report-summary').innerHTML = [
-    { val:summary.total, lbl:t('dash.total'), color:'var(--primary)' }, { val:summary.done, lbl:t('dash.done'), color:'var(--success)' },
-    { val:summary.overdue, lbl:t('dash.overdue'), color:'var(--danger)' }, { val:summary.pending, lbl:'รอดำเนินการ', color:'var(--text-sub)' },
-    { val:summary.selfLog, lbl:t('source.self'), color:'#C2410C' }, { val:summary.totalPoints+' pt', lbl:t('label.points'), color:'var(--warning)' },
-  ].map(s => `<div class="report-summary-card"><div class="report-summary-val" style="color:${s.color}">${s.val}</div><div class="report-summary-lbl">${s.lbl}</div></div>`).join('');
-  document.getElementById('report-tasks-body').innerHTML = tasks.map((tk,i) => `<tr><td>${i+1}</td><td><strong>${tk.title}</strong></td><td>${tk.category}</td>
-    <td><span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span></td><td>${tk.assigned_to}</td><td>${fmtDate(tk.deadline)}</td>
-    <td>${tk.start_time||'-'}</td><td>${tk.end_time||'-'}</td><td>${tk.completed_at?fmtDateTime(tk.completed_at):'-'}</td><td>${tk.approved_by||'-'}</td>
-    <td><strong>${tk.points}</strong></td><td><span class="badge ${tk.source==='self'?'badge-orange':'badge-blue'}">${t('source.'+tk.source)}</span></td></tr>`).join('') || `<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-sub)">ไม่มีข้อมูล</td></tr>`;
-}
-async function exportReportCSV() {
-  if (!lastReportData) await loadReport();
-  if (!lastReportData) return;
-  const { tasks, dateFrom, dateTo } = lastReportData;
-  const headers = ['#','Task','Category','Priority','Status','Type','Assigned To','Created By','Start Date','Start Time','Deadline','End Time','Points','Completed At','Approved By','Approved At'];
-  const rows = tasks.map((tk,i) => [i+1,tk.title,tk.category,tk.priority,tk.status,tk.source,tk.assigned_to,tk.created_by,tk.start_date,tk.start_time||'',tk.deadline,tk.end_time||'',tk.points,tk.completed_at||'',tk.approved_by||'',tk.approved_at||'']);
-  const csv = [headers,...rows].map(row => row.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=`WorkFlow_Report_${dateFrom}_${dateTo}.csv`; a.click(); URL.revokeObjectURL(url);
-  toast('Export CSV ✅', 'success');
-}
-
-/* ══════════════════ AUDIT ══════════════════ */
-async function loadAuditLogs() {
-  const el = document.getElementById('audit-log-list');
-  try {
-    const res = await callAPI('GET_LOGS'); const logs = res.data || [];
-    el.innerHTML = logs.length ? logs.map(l => `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)">
-      <div style="width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0">📝</div>
-      <div style="flex:1;min-width:0"><div style="font-weight:600">${l.action} — ${l.target}</div><div style="font-size:.78rem;color:var(--text-sub);margin-top:2px">โดย: ${getUserName(l.userId)}${l.prev?` | ก่อน: <em>${l.prev}</em>`:''}${l.next?` → หลัง: <em>${l.next}</em>`:''}</div></div>
-      <div style="font-size:.75rem;color:var(--text-light);flex-shrink:0;text-align:right">${fmtDateTime(l.ts)}</div></div>`).join('') : `<div class="empty-state"><div class="empty-icon">🔍</div><p>ไม่มี Log</p></div>`;
-  } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
-}
-async function clearAuditLogs() {
-  if (!confirm('ต้องการล้าง Audit Log ทั้งหมด?')) return; showLoading();
-  try { await callAPI('CLEAR_LOGS'); toast('ล้าง Log เรียบร้อย', 'info'); loadAuditLogs(); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ PROFILE ══════════════════ */
-async function saveProfile() {
-  const fullName = document.getElementById('profile-edit-name').value.trim(); if (!fullName) return toast('กรุณากรอกชื่อ-สกุล', 'warning');
-  showLoading();
-  try {
-    await callAPI('UPDATE_PROFILE', { fullName, position: document.getElementById('profile-edit-pos').value, phone: document.getElementById('profile-edit-phone').value });
-    currentUser.fullName = fullName; currentUser.position = document.getElementById('profile-edit-pos').value; currentUser.phone = document.getElementById('profile-edit-phone').value;
-    document.getElementById('profile-fullname').textContent = fullName;
-    document.getElementById('profile-position').textContent = `${currentUser.position||'—'} · ${currentUser.department||'—'}`;
-    document.getElementById('sb-name').textContent = fullName;
-    if (document.getElementById('db-greeting')) document.getElementById('db-greeting').textContent = `${t('greeting')}, ${fullName}! 👋`;
-    toast('บันทึกเรียบร้อย ✅', 'success');
-  } catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-async function changePassword() {
-  const cur = document.getElementById('pw-current').value, nw = document.getElementById('pw-new').value, conf = document.getElementById('pw-confirm').value;
-  if (!cur||!nw||!conf) return toast('กรุณากรอกข้อมูลให้ครบ', 'warning'); if (nw!==conf) return toast('รหัสผ่านใหม่ไม่ตรงกัน', 'error'); if (nw.length<6) return toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัว', 'warning');
-  showLoading();
-  try { await callAPI('CHANGE_PASSWORD', { currentPassword: cur, newPassword: nw }); toast('บันทึกเรียบร้อย ✅', 'success'); ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value=''); }
-  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-function _refreshSidebarAvatar() {
-  const el = document.getElementById('sb-avatar'); if (!el) return;
-  if (currentUser.avatar) { el.style.cssText='background:transparent;padding:0;overflow:hidden;'; el.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />`; }
-  else { el.style.cssText=''; el.textContent = currentUser.fullName.charAt(0).toUpperCase(); }
-}
-async function handleAvatarUpload(input) {
-  const file = input.files?.[0]; if (!file) return;
-  showLoading();
-  try {
-    const base64 = await compressMultipleImage(file, 60000);
-    await callAPI('UPDATE_AVATAR', { avatar: base64 });
-    currentUser.avatar = base64; _refreshSidebarAvatar();
-    const lg = document.getElementById('profile-avatar-lg');
-    if (lg) { lg.style.cssText='background:transparent;padding:0;overflow:hidden;'; lg.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
-    toast('อัปเดตรูปโปรไฟล์แล้ว ✅', 'success');
-  } catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
-}
-
-/* ══════════════════ IMAGE HANDLING (base64 ฝังใน text column ไม่ต้องใช้ Storage) ══════════════════ */
-let tempTaskImages = []; let tempDoneImages = [];
-function compressMultipleImage(file, targetSize) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        let maxWidth = 600, quality = 0.7, compressed = '';
-        const compress = () => {
-          const canvas = document.createElement('canvas'); const scaleSize = Math.min(1, maxWidth/img.width);
-          canvas.width = img.width*scaleSize; canvas.height = img.height*scaleSize;
-          const ctx = canvas.getContext('2d'); ctx.drawImage(img,0,0,canvas.width,canvas.height);
-          compressed = canvas.toDataURL('image/jpeg', quality);
-          if (compressed.length > targetSize) { if (maxWidth>200) { maxWidth-=50; quality-=0.05; compress(); } else resolve(compressed); }
-          else resolve(compressed);
-        };
-        compress();
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-async function previewTaskImage(input) {
-  const files = Array.from(input.files).slice(0,3); if (!files.length) return; showLoading();
-  const previewContainer = document.getElementById('task-image-preview'); previewContainer.innerHTML=''; tempTaskImages=[];
-  for (let i=0;i<files.length;i++) {
-    const base64 = await compressMultipleImage(files[i], 48000);
-    if (base64) { tempTaskImages.push(base64); const imgEl = document.createElement('img'); imgEl.src=base64;
-      imgEl.style.cssText="max-width:30%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:cover; cursor:pointer;";
-      imgEl.onclick = () => openLightbox(imgEl.src); previewContainer.appendChild(imgEl); }
-  }
-  previewContainer.style.display='flex'; hideLoading();
-}
-function clearTaskImage() { tempTaskImages=[]; const fi=document.getElementById('task-image-file'); if (fi) fi.value=''; const pc=document.getElementById('task-image-preview'); if (pc) { pc.style.display='none'; pc.innerHTML=''; } }
-async function previewDoneImage(input) {
-  const files = Array.from(input.files).slice(0,3); if (!files.length) return; showLoading();
-  const previewContainer = document.getElementById('done-image-preview'); previewContainer.innerHTML=''; tempDoneImages=[];
-  for (let i=0;i<files.length;i++) {
-    const base64 = await compressMultipleImage(files[i], 48000);
-    if (base64) { tempDoneImages.push(base64); const imgEl = document.createElement('img'); imgEl.src=base64;
-      imgEl.style.cssText="max-width:30%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:cover; cursor:pointer;";
-      imgEl.onclick = () => openLightbox(imgEl.src); previewContainer.appendChild(imgEl); }
-  }
-  previewContainer.style.display='flex'; hideLoading();
-}
-function clearDoneImage() { tempDoneImages=[]; const fi=document.getElementById('done-image-file'); if (fi) fi.value=''; const pc=document.getElementById('done-image-preview'); if (pc) { pc.style.display='none'; pc.innerHTML=''; } }
-let tempFileData = { name:'', base64:'' };
-async function handleFileUpload(input) {
-  const file = input.files[0]; if (!file) return;
-  const statusEl = document.getElementById('file-upload-status'); statusEl.textContent='⏳ กำลังเตรียมไฟล์...'; statusEl.style.color='var(--warning)';
-  if (file.size > 5*1024*1024) { statusEl.textContent='❌ ไฟล์ใหญ่เกิน 5MB'; statusEl.style.color='var(--danger)'; input.value=''; return; }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try { tempFileData = { name:file.name, base64:e.target.result }; document.getElementById('task-link').value = e.target.result;
-      statusEl.innerHTML = `✅ แนบไฟล์: <strong>${file.name}</strong> (${(file.size/1024).toFixed(0)} KB)`; statusEl.style.color='var(--success)'; }
-    catch(err) { statusEl.textContent='❌ มีปัญหาในการแนบไฟล์'; statusEl.style.color='var(--danger)'; }
-  };
-  reader.readAsDataURL(file);
-}
-function initPasteZones() { _setupPasteZone('paste-zone-done','done'); _setupPasteZone('paste-zone-task','task'); }
-function _setupPasteZone(zoneId, mode) {
-  const zone = document.getElementById(zoneId); if (!zone || zone.dataset.pasteInit==='1') return; zone.dataset.pasteInit='1';
-  zone.addEventListener('paste', e => { e.preventDefault(); const items=e.clipboardData?.items; if (!items) return; for (const item of items) { if (item.type.startsWith('image/')) { _handlePastedImage(item.getAsFile(), mode); break; } } });
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const file=e.dataTransfer?.files?.[0]; if (file && file.type.startsWith('image/')) _handlePastedImage(file, mode); });
-}
-async function _handlePastedImage(file, mode) {
-  const arr = mode==='done'?tempDoneImages:tempTaskImages; if (arr.length>=3) return toast('แนบรูปได้สูงสุด 3 รูปเท่านั้น', 'warning');
-  showLoading();
-  try {
-    const base64 = await compressMultipleImage(file, 48000); if (!base64) return;
-    if (mode==='done') { tempDoneImages.push(base64); _appendCapturePreview(base64,'done-image-preview'); } else { tempTaskImages.push(base64); _appendCapturePreview(base64,'task-image-preview'); }
-    toast('📋 วางรูปเรียบร้อย ✅', 'success');
-  } catch(e) { toast('วางรูปไม่สำเร็จ: '+e.message, 'error'); } finally { hideLoading(); }
-}
-function _appendCapturePreview(base64, previewId) {
-  const container = document.getElementById(previewId); if (!container) return;
-  const img = document.createElement('img'); img.src = base64; img.style.cssText='max-width:30%;max-height:100px;border-radius:8px;border:2px solid var(--secondary);object-fit:cover;cursor:pointer;';
-  img.onclick = () => openLightbox(img.src); container.appendChild(img); container.style.display='flex';
-}
-
-/* ══════════════════ PDF EXPORT ══════════════════ */
-function openPdfExportModal() {
-  const now = new Date(); const y=now.getFullYear(); const m=String(now.getMonth()+1).padStart(2,'0');
-  document.getElementById('pdf-date-from').value = `${y}-${m}-01`; document.getElementById('pdf-date-to').value = now.toISOString().split('T')[0];
-  const sel = document.getElementById('pdf-staff-filter'); sel.innerHTML = '<option value="">— พนักงานทั้งหมด —</option>';
-  usersCache.forEach(u => { const opt=document.createElement('option'); opt.value=u.id; opt.textContent=u.fullName+(u.position?` (${u.position})`:''); sel.appendChild(opt); });
-  document.getElementById('pdf-status-filter').value=''; openModal('modal-pdf-export');
-}
-async function generateTaskPDF() {
-  const dateFrom = document.getElementById('pdf-date-from').value, dateTo = document.getElementById('pdf-date-to').value;
-  const staffFilter = document.getElementById('pdf-staff-filter').value, statusFlt = document.getElementById('pdf-status-filter').value;
-  if (!dateFrom||!dateTo) return toast('กรุณาเลือกช่วงวันที่', 'warning'); if (dateFrom>dateTo) return toast('วันที่เริ่มต้องน้อยกว่าวันสิ้นสุด', 'warning');
-  let tasks = tasksCache.filter(tk => { const d=tk.deadline||tk.startDate||''; if (d<dateFrom||d>dateTo) return false; if (staffFilter && tk.assignedTo!=staffFilter) return false; if (statusFlt && tk.status!==statusFlt) return false; return true; });
-  tasks.sort((a,b) => { const da=a.deadline||a.startDate||'9999', db=b.deadline||b.startDate||'9999'; if (da!==db) return da.localeCompare(db); return (a.startDate||'').localeCompare(b.startDate||''); });
-  if (!tasks.length) return toast('ไม่มีงานในช่วงวันที่ที่เลือก', 'warning');
-  showLoading(); closeModal('modal-pdf-export');
-  try { await _buildPDF(tasks, dateFrom, dateTo); toast('📄 สร้าง PDF เรียบร้อย', 'success'); }
-  catch(e) { toast('เกิดข้อผิดพลาดในการสร้าง PDF: '+e.message, 'error'); } finally { hideLoading(); }
-}
-async function _buildPDF(tasks, dateFrom, dateTo) {
-  function getStatusStyle(s) { if (s==='done') return 'background:#D1FAE5;color:#065F46;'; if (s==='rejected'||s==='overdue') return 'background:#FEE2E2;color:#991B1B;'; return 'background:#F1F5F9;color:#475569;'; }
-  var rows = '';
-  for (var i=0;i<tasks.length;i++) {
-    var tk = tasks[i]; var cleanDesc = tk.desc||''; var rejectNote='';
-    if (cleanDesc.indexOf('[')!==-1 && cleanDesc.indexOf('ตีกลับ')!==-1) { var parts=cleanDesc.split('\n\n['); cleanDesc=parts[0].trim(); rejectNote=parts[1]?'['+parts[1]:''; }
-    var beforeImgs = [tk.imageData, tk.imageData2, tk.imageData3].filter(function(v){ return v && v.length>50; });
-    var doneImgs = [tk.imageDone, tk.imageDone2, tk.imageDone3].filter(function(v){ return v && v.length>50; });
-    var imagesHtml = '';
-    if (beforeImgs.length>0 || doneImgs.length>0) {
-      imagesHtml += '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">';
-      for (var b=0;b<beforeImgs.length;b++) { imagesHtml += '<div style="border:1px solid #E2E8F0;padding:4px;border-radius:6px;background:#F8FAFC;"><div style="font-size:10px;color:#64748B;margin-bottom:4px;font-weight:600;text-align:center;">อ้างอิง</div><img src="'+beforeImgs[b]+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
-      for (var d=0;d<doneImgs.length;d++) { imagesHtml += '<div style="border:1px solid #10B981;padding:4px;border-radius:6px;background:#ECFDF5;"><div style="font-size:10px;color:#065F46;margin-bottom:4px;font-weight:600;text-align:center;">หลักฐาน</div><img src="'+doneImgs[d]+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
-      imagesHtml += '</div>';
-    }
-    rows += '<tr><td style="text-align:center;">'+(i+1)+'</td><td><strong style="font-size:14px;color:#0F172A;">'+tk.title+'</strong>';
-    if (cleanDesc) rows += '<div style="margin-top:4px;font-size:11px;color:#64748B;">'+cleanDesc+'</div>';
-    if (rejectNote) rows += '<div style="display:block;margin-top:6px;color:#DC2626;font-size:11px;background:#FEF2F2;padding:4px 6px;border-radius:4px;">'+rejectNote+'</div>';
-    rows += imagesHtml + '</td>';
-    rows += '<td><div style="font-weight:600;">'+getUserName(tk.assignedTo)+'</div><div style="font-size:11px;color:#64748B;margin-top:2px;">(สร้างโดย: '+getUserName(tk.createdBy)+')</div></td>';
-    rows += '<td><div>'+(tk.deadline||'-')+'</div>'+(tk.endTime?'<div style="font-size:11px;color:#64748B;">เวลา: '+tk.endTime+'</div>':'')+'</td>';
-    rows += '<td style="text-align:center;"><span style="padding:4px 8px;border-radius:12px;font-size:11px;font-weight:700;display:inline-block;'+getStatusStyle(tk.status)+'">'+statusLabel(tk.status)+'</span></td>';
-    rows += '<td style="font-size:12px;">'+(tk.completedAt?'<div style="color:#10B981;margin-bottom:2px;">✅ '+tk.completedAt.substring(0,16)+'</div>':'')+(tk.approvedAt?'<div style="color:#F59E0B;">👍 อนุมัติ: '+tk.approvedAt.substring(0,10)+'</div>':'')+'</td></tr>';
-  }
-  var html = '<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายงาน WorkFlow Pro</title>'
-    + '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet" />'
-    + '<style>body{font-family:Sarabun,sans-serif;color:#1E293B;margin:0;padding:20px;font-size:13px;}.header{text-align:center;margin-bottom:24px;border-bottom:3px solid #1E3A8A;padding-bottom:16px;}.header h1{margin:0 0 5px 0;color:#1E3A8A;font-size:24px;}.header p{margin:0;color:#64748B;font-size:14px;}table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed;}th,td{border:1px solid #CBD5E1;padding:10px 8px;text-align:left;vertical-align:top;word-wrap:break-word;}th{background-color:#F8FAFC;font-weight:700;color:#334155;}@media print{@page{size:A4 portrait;margin:10mm;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style></head><body>'
-    + '<div class="header"><h1>📋 รายงานสรุปการปฏิบัติงาน (WorkFlow Pro)</h1><p>ช่วงวันที่: <strong>'+dateFrom+'</strong> ถึง <strong>'+dateTo+'</strong></p><p style="font-size:12px;margin-top:4px;">สร้างรายงานเมื่อ: '+new Date().toLocaleString('th-TH')+'</p></div>'
-    + '<table><thead><tr><th style="width:5%;text-align:center;">#</th><th style="width:35%;">ชื่องาน / รายละเอียด / รูปภาพ</th><th style="width:15%;">ผู้รับผิดชอบ</th><th style="width:15%;">กำหนดส่ง</th><th style="width:12%;text-align:center;">สถานะ</th><th style="width:18%;">อัปเดตล่าสุด</th></tr></thead><tbody>'+rows+'</tbody></table>'
-    + '<div style="text-align:center;margin-top:30px;font-size:11px;color:#94A3B8;">สร้างและประมวลผลโดยระบบ WorkFlow Pro</div></body></html>';
-  var printWindow = window.open('', '_blank');
-  if (!printWindow) { toast('กรุณาอนุญาต Pop-up เพื่อเปิดเอกสาร PDF', 'warning'); return; }
-  printWindow.document.write(html); printWindow.document.close(); printWindow.focus();
-  setTimeout(function(){ printWindow.print(); }, 1500);
-}
-
-/* ══════════════════ NOTIFICATIONS (ย่อ) ══════════════════ */
-let notifData = []; let notifRead = JSON.parse(localStorage.getItem('wf_notif_read') || '[]'); let notifTabCur = 'all'; let notifBuilt = false;
-async function showNotifications() { document.getElementById('notif-panel')?.classList.add('open'); document.getElementById('notif-backdrop')?.classList.add('open'); document.body.style.overflow='hidden'; if (!notifBuilt) await buildNotifications(); renderNotifList(); }
-function closeNotifPanel() { document.getElementById('notif-panel')?.classList.remove('open'); document.getElementById('notif-backdrop')?.classList.remove('open'); document.body.style.overflow=''; }
-function switchNotifTab(tab, el) { notifTabCur=tab; document.querySelectorAll('.notif-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderNotifList(); }
-function updateNotifBadge(shake=false) {
-  const btn = document.getElementById('notif-bell-btn'); if (!btn) return; const unread = notifData.filter(n => !notifRead.includes(n.id)).length;
-  let badge = btn.querySelector('.notif-badge');
-  if (unread>0) { if (!badge) { btn.insertAdjacentHTML('beforeend', `<span class="notif-badge"></span>`); badge=btn.querySelector('.notif-badge'); } badge.textContent = unread>99?'99+':unread;
-    if (shake) { btn.classList.remove('bell-shake'); void btn.offsetWidth; btn.classList.add('bell-shake'); setTimeout(()=>btn.classList.remove('bell-shake'),600); } }
-  else badge?.remove();
-  const lbl = document.getElementById('notif-unread-label'); if (lbl) lbl.textContent = `${unread} ยังไม่ได้อ่าน`;
-}
-function markAllRead() { notifRead = notifData.map(n=>n.id); localStorage.setItem('wf_notif_read', JSON.stringify(notifRead)); updateNotifBadge(); renderNotifList(); }
-function clearAllNotif() { notifData=[]; notifRead=[]; notifBuilt=false; localStorage.setItem('wf_notif_read','[]'); updateNotifBadge(); renderNotifList(); }
-function handleNotifClick(id) { if (!notifRead.includes(id)) { notifRead.push(id); localStorage.setItem('wf_notif_read', JSON.stringify(notifRead)); updateNotifBadge(); } const item = notifData.find(n=>n.id===id); if (item?.action) { item.action(); closeNotifPanel(); } }
-function renderNotifList() {
-  const el = document.getElementById('notif-list'); if (!el) return; let list = [...notifData];
-  if (notifTabCur==='urgent') list = list.filter(n=>n.urgent); if (notifTabCur==='tasks') list = list.filter(n=>n.type==='task'); if (notifTabCur==='system') list = list.filter(n=>n.type==='system');
-  list.sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0));
-  if (!list.length) { el.innerHTML = `<div class="notif-empty"><div class="notif-empty-icon">✅</div><div style="font-weight:700;margin-bottom:6px">ไม่มีการแจ้งเตือน</div><div style="font-size:.82rem;color:var(--text-sub)">ทุกอย่างเรียบร้อย 👍</div></div>`; return; }
-  el.innerHTML = list.map(n => { const unread = !notifRead.includes(n.id);
-    return `<div class="notif-item${unread?' unread':''}${n.urgent?' is-urgent':''}" onclick="handleNotifClick('${n.id}')"><div class="notif-icon" style="background:${n.iconBg}">${n.icon}</div>
-      <div class="notif-body"><div class="notif-title${n.urgent?' urgent':''}">${n.title}</div>${n.sub?`<div class="notif-sub">${n.sub}</div>`:''}<div class="notif-time">🕐 ${n.time||''}</div></div>${unread?'<div class="notif-dot"></div>':''}</div>`;
-  }).join('');
-}
-async function buildNotifications() {
-  const items = []; const today = todayStr();
-  try {
-    const dashRes = await callAPI('GET_DASHBOARD');
-    const overdueMine = tasksCache.filter(tk => tk.deadline && tk.deadline<today && tk.status!=='done' && tk.status!=='cancelled' && tk.status!=='rejected' && tk.assignedTo===currentUser.id);
-    if (overdueMine.length) items.push({ id:'overdue_'+today, type:'task', urgent:true, icon:'🚨', iconBg:'#FEE2E2', title:`งานเกินกำหนด ${overdueMine.length} รายการ!`, sub:overdueMine.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today });
-    const rejected = tasksCache.filter(tk => tk.status==='rejected' && tk.assignedTo===currentUser.id);
-    if (rejected.length) items.push({ id:'rejected_'+today, type:'task', urgent:true, icon:'↩️', iconBg:'#FEE2E2', title:`งานถูกตีกลับ ${rejected.length} รายการ`, sub:rejected.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today });
-    if (isManager()) { const pending = tasksCache.filter(tk => tk.status==='done' && !tk.approvedAt); if (pending.length) items.push({ id:'approval_'+today, type:'task', urgent:false, icon:'👍', iconBg:'#ECFDF5', title:`รออนุมัติ ${pending.length} งาน`, sub:pending.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today }); }
-  } catch(e) { console.warn('buildNotifications:', e); }
-  notifData = items; notifBuilt = true;
-  const newUnread = items.filter(n => !notifRead.includes(n.id)).length;
-  updateNotifBadge(newUnread>0);
-}
-
-/* ══════════════════ STARTUP ══════════════════ */
-(async function init() {
-  showLoading();
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data: profile } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-      if (profile) {
-        const { data: subs } = await supabase.from('users').select('id').eq('manager_id', session.user.id).limit(1);
-        currentUser = mapUser(profile, { hasSubordinates: !!(subs && subs.length) });
-        document.getElementById('login-page').classList.remove('active');
-        document.getElementById('main-app').classList.add('active');
-        await loadInitialData(); buildLayout(); applyLang(); navigate('dashboard');
-      }
-    }
-  } catch(e) { console.warn('init session check failed:', e); }
-  finally { hideLoading(); }
-
-  setInterval(async () => {
-    if (!currentUser || document.hidden) return;
-    try { notifBuilt = false; await buildNotifications(); if (document.getElementById('notif-panel')?.classList.contains('open')) renderNotifList(); } catch(e) {}
-  }, 6*60*1000);
-})();
-</script>
-</body>
-</html>
+          <div class="adv-filter-col"><label>⚡ ความเร่งด่วน</label><select class="adv-filter-select" id="af-priority" onchange="taskCurrentPage=1;renderTaskList()"><optio
