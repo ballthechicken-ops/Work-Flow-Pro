@@ -892,8 +892,13 @@ async function _dispatchAPI(action, payload) {
     }
     case 'GET_DASHBOARD': {
       const { data: taskRows, error } = await supabase.from('tasks').select('*'); if (error) throw error;
-      const tasks = (taskRows||[]).map(mapTask);
+      const allTasks = (taskRows||[]).map(mapTask);
       const today = todayStr();
+      const targetSel = payload.targetUserId || 'self';
+      const isTeamView = targetSel === 'team';
+      const targetUserId = isTeamView ? null : (targetSel === 'self' ? currentUser.id : targetSel);
+      const tasks = isTeamView ? allTasks : allTasks.filter(t => t.assignedTo === targetUserId);
+
       const counts = { pending:0, done:0, overdue:0, cancelled:0, total: tasks.length };
       tasks.forEach(t => {
         const isLate = t.deadline && t.deadline < today && t.status!=='done' && t.status!=='cancelled';
@@ -902,15 +907,50 @@ async function _dispatchAPI(action, payload) {
         else if (t.status==='done') counts.done++;
         else counts.pending++;
       });
+
+      // อัตราส่งงานตรงเวลา (นับเฉพาะงานมอบหมายที่เสร็จแล้วและมีกำหนดส่ง)
+      const doneAssigned = tasks.filter(t => t.status==='done' && t.source==='assigned' && t.deadline && t.completedAt);
+      const onTimeCount = doneAssigned.filter(t => t.completedAt.substring(0,10) <= t.deadline).length;
+      const onTimeRate = doneAssigned.length ? Math.round((onTimeCount/doneAssigned.length)*100) : null;
+
+      // งานใกล้ครบกำหนดใน 7 วันข้างหน้า
+      const in7days = new Date(); in7days.setDate(in7days.getDate()+7);
+      const in7str = `${in7days.getFullYear()}-${String(in7days.getMonth()+1).padStart(2,'0')}-${String(in7days.getDate()).padStart(2,'0')}`;
+      const upcomingDeadlines = tasks
+        .filter(t => t.deadline && t.deadline >= today && t.deadline <= in7str && t.status!=='done' && t.status!=='cancelled')
+        .sort((a,b) => a.deadline.localeCompare(b.deadline))
+        .slice(0,6)
+        .map(t => ({ id:t.id, title:t.title, deadline:t.deadline, priority:t.priority, assignedTo:t.assignedTo }));
+
       const recentTasks = tasks.slice(-8).reverse().map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
+
+      // คะแนน EXP ของการ์ด "ระดับขั้นพนักงาน" แสดงเป็นของผู้ใช้ที่ login อยู่เสมอ ไม่ผูกกับตัวกรองที่เลือกดู
       const { data: me } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
-      return { success:true, stats: counts, points: me?.points || 0, recentTasks };
+      const points = me?.points || 0;
+
+      // ภาพรวมทีม (เฉพาะ Manager/Admin ตอนดูมุมมอง "ทั้งทีม")
+      let teamOverview = null;
+      if (isTeamView && isManager()) {
+        const memberIds = [...new Set(allTasks.map(t => t.assignedTo))];
+        const { data: memberRows } = await supabase.from('users').select('id, full_name').in('id', memberIds.length ? memberIds : ['00000000-0000-0000-0000-000000000000']);
+        const nameMap = {}; (memberRows||[]).forEach(u => nameMap[u.id] = u.full_name);
+        const byUser = {};
+        allTasks.forEach(t => {
+          if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { userId:t.assignedTo, fullName: nameMap[t.assignedTo] || '—', pending:0, overdue:0 };
+          const isLate = t.deadline && t.deadline < today && t.status!=='done' && t.status!=='cancelled';
+          if (isLate) byUser[t.assignedTo].overdue++;
+          else if (t.status==='pending') byUser[t.assignedTo].pending++;
+        });
+        teamOverview = Object.values(byUser).sort((a,b) => (b.pending+b.overdue)-(a.pending+a.overdue)).slice(0,8);
+      }
+
+      return { success:true, stats: counts, points, recentTasks, onTimeRate, upcomingDeadlines, teamOverview };
     }
     case 'GET_DASHBOARD_BUNDLE': {
-      const dash = await _dispatchAPI('GET_DASHBOARD', {});
+      const dash = await _dispatchAPI('GET_DASHBOARD', payload);
       const rewards = await _dispatchAPI('GET_REWARDS', {});
       const tasks = await _dispatchAPI('GET_TASKS', {});
-      return { success:true, dashboard: { stats: dash.stats, points: dash.points, recentTasks: dash.recentTasks }, rewards: rewards.data, tasks: tasks.data };
+      return { success:true, dashboard: dash, rewards: rewards.data, tasks: tasks.data };
     }
     case 'EXPORT_REPORT': {
       const { dateFrom, dateTo } = payload;
@@ -1174,6 +1214,13 @@ function buildPagesHTML() {
       <div><div class="page-title" id="db-greeting">${t('greeting')}, ${currentUser.fullName}! 👋</div><div class="page-sub" id="db-date"></div></div>
       <button class="btn btn-primary" onclick="openNewTaskModal()">${t('dash.createTask')}</button>
     </div>
+    ${isManagerUser ? `<div class="card" style="margin-bottom:14px"><div class="card-body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;">
+      <label style="font-size:.85rem;font-weight:700;color:var(--text-sub);white-space:nowrap;">🔍 ดูข้อมูลของ:</label>
+      <select class="select-field" id="dash-target-filter" onchange="loadDashboard()" style="max-width:260px;padding:8px 12px;font-size:.85rem;">
+        <option value="team">👥 ภาพรวมทั้งทีม</option>
+        <option value="self">👤 ของฉันเอง</option>
+      </select>
+    </div></div>` : ''}
     <div class="stat-cards">
       <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value" id="s-total">—</div><div class="stat-label">${t('dash.total')}</div></div>
       <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" style="color:var(--success)" id="s-done">—</div><div class="stat-label">${t('dash.done')}</div></div>
@@ -1181,6 +1228,18 @@ function buildPagesHTML() {
       <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-value" style="color:#475569" id="s-cancelled">—</div><div class="stat-label">${t('dash.cancelled')}</div></div>
     </div>
     <div class="card"><div class="card-header">📊 สัดส่วนงาน</div><div class="card-body" style="display:flex;justify-content:center;align-items:center;gap:24px;flex-wrap:wrap;"><canvas id="donut-canvas" width="130" height="130"></canvas><div id="donut-legend"></div></div></div>
+
+    <div class="grid-2" style="margin-bottom:0">
+      <div class="card"><div class="card-header">⏰ งานใกล้ครบกำหนด (7 วันข้างหน้า)</div><div id="upcoming-deadlines-list"></div></div>
+      <div class="card"><div class="card-header">🎯 อัตราส่งงานตรงเวลา</div><div class="card-body" style="text-align:center;">
+        <div style="font-size:2.4rem;font-weight:900;color:var(--secondary);" id="ontime-rate-value">—</div>
+        <div class="progress-bar-bg" style="margin-top:10px"><div class="progress-bar-fill" id="ontime-rate-bar" style="width:0%"></div></div>
+        <div style="font-size:.76rem;color:var(--text-sub);margin-top:8px" id="ontime-rate-note">คำนวณจากงานมอบหมายที่เสร็จแล้วและมีกำหนดส่ง</div>
+      </div></div>
+    </div>
+
+    <div id="team-overview-card" style="display:none" class="card"><div class="card-header">👥 ภาพรวมงานค้างของทีม</div><div id="team-overview-list"></div></div>
+
     <div class="card"><div class="card-header">📋 ${t('dash.recentTasks')}<button class="btn btn-secondary btn-sm" onclick="navigate('tasks')">${t('dash.viewAll')}</button></div><div id="recent-tasks-list"></div></div>
     <div class="card"><div class="card-header">🎮 ระดับขั้นพนักงาน (EXP)</div><div class="card-body">
       <div style="text-align:center; margin-bottom: 16px;">
@@ -1411,10 +1470,51 @@ async function refreshCurrentPage() {
 async function loadDashboard() {
   showLoading();
   try {
-    const bundle = await callAPI('GET_DASHBOARD_BUNDLE');
-    const { stats, points, recentTasks = [] } = bundle.dashboard;
+    const filterEl = document.getElementById('dash-target-filter');
+    if (filterEl && filterEl.options.length <= 2 && isManager()) {
+      const teamMembers = usersCache.filter(u => u.id !== currentUser.id && (isAdmin() || hasManager(u, currentUser.id)));
+      teamMembers.forEach(u => { const o = document.createElement('option'); o.value = u.id; o.textContent = '👤 ' + u.fullName; filterEl.appendChild(o); });
+    }
+    const targetUserId = filterEl ? filterEl.value : 'self';
+    const bundle = await callAPI('GET_DASHBOARD_BUNDLE', { targetUserId });
+    const { stats, points, recentTasks = [], onTimeRate, upcomingDeadlines = [], teamOverview } = bundle.dashboard;
     tasksCache = bundle.tasks || [];
     ['total','done','overdue','cancelled'].forEach(k => { const el = document.getElementById(`s-${k}`); if (el) el.textContent = stats[k] ?? 0; });
+
+    const otVal = document.getElementById('ontime-rate-value');
+    if (otVal) {
+      if (onTimeRate === null || onTimeRate === undefined) { otVal.textContent = '—'; document.getElementById('ontime-rate-bar').style.width = '0%'; document.getElementById('ontime-rate-note').textContent = 'ยังไม่มีข้อมูลงานมอบหมายที่เสร็จสิ้นเพียงพอสำหรับคำนวณ'; }
+      else { otVal.textContent = onTimeRate + '%'; document.getElementById('ontime-rate-bar').style.width = onTimeRate + '%'; document.getElementById('ontime-rate-note').textContent = 'คำนวณจากงานมอบหมายที่เสร็จแล้วและมีกำหนดส่ง'; }
+    }
+
+    const udEl = document.getElementById('upcoming-deadlines-list');
+    if (udEl) {
+      udEl.innerHTML = upcomingDeadlines.length ? upcomingDeadlines.map(tk => {
+        const diff = Math.ceil((parseLocalDate(tk.deadline) - parseLocalDate(todayStr())) / 86400000);
+        const urgentColor = diff<=1 ? 'var(--danger)' : (diff<=3 ? 'var(--warning)' : 'var(--text-sub)');
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)">
+          <div style="width:8px;height:8px;border-radius:50%;background:${priorityColor(tk.priority)};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.9rem">${tk.title}</div></div>
+          <span style="font-size:.76rem;font-weight:700;color:${urgentColor};flex-shrink:0">${diff<=0?'วันนี้':`อีก ${diff} วัน`}</span>
+        </div>`;
+      }).join('') : `<div class="empty-state" style="padding:24px"><p style="font-size:.85rem">ไม่มีงานใกล้ครบกำหนดใน 7 วันนี้ 🎉</p></div>`;
+    }
+
+    const teamCard = document.getElementById('team-overview-card');
+    if (teamCard) {
+      if (teamOverview && teamOverview.length) {
+        teamCard.style.display = '';
+        document.getElementById('team-overview-list').innerHTML = teamOverview.map(m => `
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)">
+            ${avatarHtml(m.userId, 28)}
+            <div style="flex:1;min-width:0;font-weight:600;font-size:.87rem;">${m.fullName}</div>
+            ${m.overdue>0?`<span class="badge badge-red">🔴 เกิน ${m.overdue}</span>`:''}
+            ${m.pending>0?`<span class="badge badge-gray">⏳ ${m.pending}</span>`:''}
+            ${(m.overdue===0&&m.pending===0)?`<span class="badge badge-green">✅ หมดงานค้าง</span>`:''}
+          </div>`).join('');
+      } else { teamCard.style.display = 'none'; }
+    }
+
     const rtEl = document.getElementById('recent-tasks-list');
     if (rtEl) {
       rtEl.innerHTML = recentTasks.length ? recentTasks.map(tk => `
@@ -1542,6 +1642,7 @@ function renderTaskList() {
         <div class="task-actions">
           <button class="btn btn-secondary btn-sm" onclick="viewTaskDetail(${tk.id})">👁</button>
           ${canEditTask(tk)?`<button class="btn btn-secondary btn-sm" onclick="editTask(${tk.id})">✏️</button>`:''}
+          <button class="btn btn-secondary btn-sm" onclick="duplicateTask(${tk.id})" title="คัดลอกงานนี้">📋</button>
           ${tk.status!=='done'&&tk.status!=='cancelled'&&(isManagerUser||tk.assignedTo===currentUser.id||tk.createdBy===currentUser.id)?`<button class="btn ${tk.status==='rejected'?'btn-warning':'btn-success'} btn-sm" onclick="markDone(${tk.id})">${tk.status==='rejected'?'📤':'✅'}</button>`:''}
           ${isManagerUser&&tk.status==='done'&&!tk.approvedAt?`<button class="btn btn-secondary btn-sm" onclick="approveTask(${tk.id})">👍</button>`:''}
           ${isManagerUser&&tk.status!=='done'&&tk.status!=='cancelled'&&tk.status!=='rejected'?`<button class="btn btn-warning btn-sm" onclick="cancelTask(${tk.id})">❌</button>`:''}
@@ -1607,6 +1708,23 @@ function openNewTaskModal() {
   }
   setTimeout(() => initPasteZones(), 100);
   openModal('modal-task');
+}
+function duplicateTask(id) {
+  const src = tasksCache.find(x => x.id == id); if (!src) return toast('ไม่พบข้อมูลงาน', 'error');
+  openNewTaskModal();
+  document.getElementById('task-title').value = src.title + ' (สำเนา)';
+  document.getElementById('task-desc').value = src.desc || '';
+  const catEl = document.getElementById('task-category'); if (catEl) catEl.value = src.category;
+  document.getElementById('task-priority').value = src.priority || 'Medium';
+  document.getElementById('task-points').value = src.points || (isManager() ? 20 : 10);
+  document.getElementById('task-source').value = src.source || 'assigned';
+  document.getElementById('task-start-date').value = todayStr();
+  document.getElementById('task-start-time').value = src.startTime || '';
+  document.getElementById('task-deadline').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  document.getElementById('task-end-time').value = src.endTime || '';
+  const assignEl = document.getElementById('task-assign'); if (assignEl && [...assignEl.options].some(o=>o.value===src.assignedTo)) assignEl.value = src.assignedTo;
+  document.getElementById('modal-task-title').textContent = '📋 คัดลอกงาน (แก้ไขรายละเอียดแล้วบันทึก)';
+  toast('คัดลอกข้อมูลงานมาให้แล้ว ลองแก้ไขรายละเอียด/วันที่ตามต้องการก่อนบันทึก', 'info', 4500);
 }
 function editTask(id) {
   const tk = tasksCache.find(x => x.id == id); if (!tk) return;
@@ -1792,6 +1910,7 @@ function viewTaskDetail(id) {
     ${doneImgs.length?`<div class="detail-section"><div class="detail-section-title" style="color:var(--success)">✅ รูปหลักฐานการส่งงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${doneImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--success);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
     <div class="detail-section"><div class="detail-section-title">ประวัติสถานะ</div><div class="detail-timeline">${timeline.map(ev=>`<div class="detail-timeline-item ${ev.cls}"><div class="detail-timeline-text">${ev.text}</div><div class="detail-timeline-sub">${ev.sub}</div></div>`).join('')}</div></div>`;
   let actions = `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail')" style="flex:1">ปิด</button>`;
+  actions += `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail');duplicateTask(${tk.id})" style="flex:1">📋 คัดลอก</button>`;
   if (canEditTask(tk)) actions += `<button class="btn btn-primary" onclick="closeModal('modal-task-detail');editTask(${tk.id})" style="flex:1">✏️ แก้ไข</button>`;
   if (tk.status!=='done' && tk.status!=='cancelled' && canManageTaskFE(tk)) {
     const isRejected = tk.status==='rejected';
@@ -1860,17 +1979,21 @@ async function loadKPI() {
       const myProgress = r.myProgress || 0;
       const pct = Math.min(100, Math.round((myProgress / (r.targetPoints||1)) * 100));
       const isClosed = r.status === 'closed';
+      const isOwner = r.createdBy === currentUser.id;
       const dateLabel = (r.startDate||r.endDate) ? `📅 ${r.startDate?fmtDate(r.startDate):'—'} - ${r.endDate?fmtDate(r.endDate):'ไม่กำหนด'}` : '';
+      const progressSection = isOwner
+        ? `<div style="font-size:.78rem;color:var(--text-sub);background:var(--bg);border-radius:8px;padding:8px 10px;margin-top:8px;">ℹ️ รอบรางวัลนี้ตั้งไว้สำหรับทีมของคุณ คะแนนของคุณเองจะไม่ถูกนับรวมในรอบนี้</div>`
+        : `<div class="progress-bar-bg" style="margin-top:8px"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        <div class="progress-label" style="margin-top:4px"><span>คุณ: ${myProgress}/${r.targetPoints} pts</span><span>${pct}%</span></div>
+        ${(!isClosed && myProgress>=r.targetPoints) ? `<span class="badge badge-green" style="margin-top:6px">🎉 ถึงเป้าหมายแล้ว!</span>` : ''}`;
       return `<div style="padding:14px 0;border-bottom:1px solid var(--border);${isClosed?'opacity:.55':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <div style="font-weight:700">🎁 ${r.name} ${isClosed?'<span class="badge badge-cancel">ปิดรอบแล้ว</span>':'<span class="badge badge-green">🟢 กำลังดำเนินการ</span>'}</div>
-          ${(!isClosed && (isAdmin()||r.createdBy===currentUser.id)) ? `<div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-warning btn-sm" onclick="closeReward(${r.id})">✂️ ตัดรอบ</button><button class="btn btn-danger btn-sm" onclick="deleteReward(${r.id})">🗑</button></div>` : ''}
+          ${(!isClosed && (isAdmin()||isOwner)) ? `<div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-warning btn-sm" onclick="closeReward(${r.id})">✂️ ตัดรอบ</button><button class="btn btn-danger btn-sm" onclick="deleteReward(${r.id})">🗑</button></div>` : ''}
         </div>
         <div style="font-size:.83rem;color:var(--text-sub);margin-top:3px">${r.detail||''}</div>
         <div style="font-size:.76rem;color:var(--text-light);margin-top:2px">${dateLabel}</div>
-        <div class="progress-bar-bg" style="margin-top:8px"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-        <div class="progress-label" style="margin-top:4px"><span>คุณ: ${myProgress}/${r.targetPoints} pts</span><span>${pct}%</span></div>
-        ${(!isClosed && myProgress>=r.targetPoints) ? `<span class="badge badge-green" style="margin-top:6px">🎉 ถึงเป้าหมายแล้ว!</span>` : ''}
+        ${progressSection}
       </div>`;
     }
     let html = '';
