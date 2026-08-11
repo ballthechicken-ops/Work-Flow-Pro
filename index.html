@@ -342,6 +342,7 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -922,7 +923,8 @@ async function _dispatchAPI(action, payload) {
     }
     case 'GET_DASHBOARD': {
       const { data: taskRows, error } = await supabase.from('tasks').select('*'); if (error) throw error;
-      const allTasks = (taskRows||[]).map(mapTask);
+      const allTasksMapped = (taskRows||[]).map(mapTask);
+      const allTasks = allTasksMapped;
       const today = todayStr();
       const targetSel = payload.targetUserId || 'self';
       const isTeamView = targetSel === 'team';
@@ -974,13 +976,13 @@ async function _dispatchAPI(action, payload) {
         teamOverview = Object.values(byUser).sort((a,b) => (b.pending+b.overdue)-(a.pending+a.overdue)).slice(0,8);
       }
 
-      return { success:true, stats: counts, points, recentTasks, onTimeRate, upcomingDeadlines, teamOverview };
+      return { success:true, stats: counts, points, recentTasks, onTimeRate, upcomingDeadlines, teamOverview, allTasks };
     }
     case 'GET_DASHBOARD_BUNDLE': {
       const dash = await _dispatchAPI('GET_DASHBOARD', payload);
-      const rewards = await _dispatchAPI('GET_REWARDS', {});
-      const tasks = await _dispatchAPI('GET_TASKS', {});
-      return { success:true, dashboard: dash, rewards: rewards.data, tasks: tasks.data };
+      const tasks = dash.allTasks || [];
+      delete dash.allTasks;
+      return { success:true, dashboard: dash, tasks };
     }
     case 'EXPORT_REPORT': {
       const { dateFrom, dateTo } = payload;
@@ -1253,6 +1255,14 @@ function buildPagesHTML() {
       <div><div class="page-title" id="db-greeting">${t('greeting')}, ${currentUser.fullName}! 👋</div><div class="page-sub" id="db-date"></div></div>
       <button class="btn btn-primary" onclick="openNewTaskModal()">${t('dash.createTask')}</button>
     </div>
+    <div class="notif-tabs" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;">
+      <button class="notif-tab active" data-dashtab="overview" onclick="switchDashTab('overview',this)">📊 ภาพรวม</button>
+      <button class="notif-tab" data-dashtab="trend" onclick="switchDashTab('trend',this)">📈 แนวโน้มรายเดือน</button>
+      <button class="notif-tab" data-dashtab="category" onclick="switchDashTab('category',this)">📂 ตามประเภทงาน</button>
+      ${isManagerUser ? `<button class="notif-tab" data-dashtab="compare" onclick="switchDashTab('compare',this)">👥 เทียบพนักงาน</button>` : ''}
+    </div>
+
+    <div class="dash-tab-panel" id="dashtab-overview">
     ${isManagerUser ? `<div class="card" style="margin-bottom:14px"><div class="card-body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;">
       <label style="font-size:.85rem;font-weight:700;color:var(--text-sub);white-space:nowrap;">🔍 ดูข้อมูลของ:</label>
       <select class="select-field" id="dash-target-filter" onchange="loadDashboard()" style="max-width:260px;padding:8px 12px;font-size:.85rem;">
@@ -1294,6 +1304,26 @@ function buildPagesHTML() {
       <div class="progress-label" style="margin-top: 6px;"><span id="kpi-min-label">0</span><span id="kpi-pct" style="font-weight: 800;">0%</span><span id="kpi-max-label">300</span></div>
       <div id="kpi-status-msg" style="font-size:.88rem; color:var(--text-sub); margin-top:10px; text-align:center;"></div>
     </div></div>
+    </div>
+
+    <div class="dash-tab-panel" id="dashtab-trend" style="display:none">
+      <div class="card"><div class="card-header">📈 แนวโน้มงานรายเดือน (6 เดือนย้อนหลัง)</div><div class="card-body">
+        <div style="position:relative;height:280px;"><canvas id="trend-chart"></canvas></div>
+        <div style="font-size:.76rem;color:var(--text-sub);margin-top:10px;">นับจากวันครบกำหนดของงาน (deadline) ในแต่ละเดือน</div>
+      </div></div>
+    </div>
+
+    <div class="dash-tab-panel" id="dashtab-category" style="display:none">
+      <div class="card"><div class="card-header">📂 สัดส่วนตามประเภทงาน</div><div class="card-body">
+        <div style="position:relative;height:300px;"><canvas id="category-chart"></canvas></div>
+      </div></div>
+    </div>
+
+    <div class="dash-tab-panel" id="dashtab-compare" style="display:none">
+      <div class="card"><div class="card-header">👥 เปรียบเทียบผลงานพนักงาน (คะแนนสะสมจากงานที่เสร็จ)</div><div class="card-body">
+        <div style="position:relative;height:340px;"><canvas id="compare-chart"></canvas></div>
+      </div></div>
+    </div>
   </div>
 
   <div class="page" id="page-tasks">
@@ -1629,6 +1659,67 @@ function drawDonut(stats) {
   ctx.fillStyle='#1E293B'; ctx.font='bold 16px Sarabun'; ctx.textAlign='center'; ctx.fillText(stats.total||0, cx, cy+6);
   const legend = document.getElementById('donut-legend');
   if (legend) legend.innerHTML = segments.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:11px;height:11px;border-radius:50%;background:${s.color};flex-shrink:0"></div><span style="font-size:.83rem">${s.label}: <strong>${s.val}</strong></span></div>`).join('');
+}
+
+/* ══════════════════ DASHBOARD TABS + กราฟเพิ่มเติม (ใช้ tasksCache ที่โหลดไว้แล้ว ไม่ยิง query เพิ่ม) ══════════════════ */
+let _dashCharts = {};
+function switchDashTab(tab, el) {
+  document.querySelectorAll('.dash-tab-panel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById('dashtab-' + tab); if (panel) panel.style.display = '';
+  document.querySelectorAll('[data-dashtab]').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'trend') renderMonthlyTrendChart();
+  else if (tab === 'category') renderCategoryChart();
+  else if (tab === 'compare') renderCompareChart();
+}
+function _destroyChart(key) { if (_dashCharts[key]) { _dashCharts[key].destroy(); delete _dashCharts[key]; } }
+function renderMonthlyTrendChart() {
+  const canvas = document.getElementById('trend-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const months = []; const now = new Date();
+  for (let i=5;i>=0;i--) { const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label: d.toLocaleDateString(currentLang==='th'?'th-TH':'en-GB',{month:'short',year:'2-digit'}) }); }
+  const doneCounts = months.map(m => tasksCache.filter(t => t.deadline && t.deadline.startsWith(m.key) && t.status==='done').length);
+  const overdueCounts = months.map(m => tasksCache.filter(t => t.deadline && t.deadline.startsWith(m.key) && t.status!=='done' && t.status!=='cancelled' && t.deadline < todayStr()).length);
+  _destroyChart('trend');
+  _dashCharts.trend = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: months.map(m=>m.label), datasets: [
+      { label: t('status.done'), data: doneCounts, backgroundColor: '#16A34A', borderRadius: 6 },
+      { label: t('status.overdue'), data: overdueCounts, backgroundColor: '#DC2626', borderRadius: 6 },
+    ] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+}
+function renderCategoryChart() {
+  const canvas = document.getElementById('category-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const byCat = {};
+  tasksCache.forEach(t => { const c = t.category || 'ไม่ระบุ'; if (!byCat[c]) byCat[c] = { total:0, done:0 }; byCat[c].total++; if (t.status==='done') byCat[c].done++; });
+  const entries = Object.entries(byCat).sort((a,b) => b[1].total - a[1].total).slice(0,10);
+  _destroyChart('category');
+  _dashCharts.category = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: entries.map(e=>e[0]), datasets: [
+      { label: 'จำนวนงานทั้งหมด', data: entries.map(e=>e[1].total), backgroundColor: '#0891B2', borderRadius: 6 },
+      { label: 'เสร็จแล้ว', data: entries.map(e=>e[1].done), backgroundColor: '#14B8A6', borderRadius: 6 },
+    ] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+}
+function renderCompareChart() {
+  const canvas = document.getElementById('compare-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const byUser = {};
+  tasksCache.filter(t => t.status==='done').forEach(t => {
+    if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { points:0, count:0 };
+    byUser[t.assignedTo].points += (t.points||0); byUser[t.assignedTo].count++;
+  });
+  const entries = Object.entries(byUser).map(([uid,v]) => ({ name:getUserName(uid), ...v })).sort((a,b) => b.points-a.points).slice(0,12);
+  _destroyChart('compare');
+  _dashCharts.compare = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: entries.map(e=>e.name), datasets: [
+      { label: 'คะแนนสะสม (จากงานที่เสร็จ)', data: entries.map(e=>e.points), backgroundColor: '#0F766E', borderRadius: 6 },
+    ] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
 }
 
 /* ══════════════════ TASKS ══════════════════ */
