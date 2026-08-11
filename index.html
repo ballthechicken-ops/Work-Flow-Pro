@@ -221,6 +221,26 @@
     .report-summary-lbl { font-size:.76rem; color:var(--text-sub); margin-top:3px; }
     .cat-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin-bottom:7px; background:#fff; }
     .deduction-warning { background:#FFF7ED; border:1.5px solid #FDE68A; border-radius:10px; padding:12px 16px; font-size:.85rem; color:#92400E; margin-bottom:16px; display:flex; gap:8px; align-items:flex-start; }
+    /* ══════════════════ BOTTOM NAV (มือถือเท่านั้น) ══════════════════ */
+    #bottom-nav { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+      background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(15,36,96,.08);
+      padding-bottom: env(safe-area-inset-bottom, 0px); }
+    #bottom-nav .bn-row { display: flex; align-items: stretch; height: 60px; }
+    #bottom-nav .bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; color: var(--text-sub); font-size: .68rem; font-weight: 600; background: none; border: none;
+      font-family: inherit; position: relative; min-height: 60px; }
+    #bottom-nav .bn-item .bn-icon { font-size: 1.28rem; line-height: 1; }
+    #bottom-nav .bn-item.active { color: var(--primary); }
+    #bottom-nav .bn-item.active .bn-icon { transform: translateY(-1px); }
+    #bottom-nav .bn-item .bn-dot { position: absolute; top: 6px; right: calc(50% - 18px); width: 8px; height: 8px; border-radius: 50%; background: var(--danger); border: 2px solid #fff; }
+    @media (max-width: 900px) {
+      #bottom-nav { display: block; }
+      #content { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+      .btn-sm { min-height: 40px; padding: 8px 14px; }
+      .task-actions { gap: 8px; }
+      .topbar-btn, #menu-toggle { min-width: 42px; min-height: 42px; }
+      .nav-item { min-height: 52px; }
+    }
     @media (max-width: 900px) {
       #sidebar { transform: translateX(-100%); box-shadow: none; }
       #sidebar.open { transform: none; box-shadow: 8px 0 30px rgba(0,0,0,.2); }
@@ -381,6 +401,7 @@
     </div>
   </div>
   <div id="content"></div>
+  <div id="bottom-nav"></div>
 </div>
 
 <div class="modal-overlay" id="modal-task-detail">
@@ -1200,6 +1221,14 @@ function buildLayout() {
       </div>
       <button class="btn-logout" onclick="logout()"><span>🚪</span><span>${t('btn.logout')}</span></button>
     </div>`;
+  document.getElementById('bottom-nav').innerHTML = `
+    <div class="bn-row">
+      <button class="bn-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="bn-icon">📊</span><span>${t('nav.dashboard')}</span></button>
+      <button class="bn-item" data-page="tasks" onclick="navigate('tasks')"><span class="bn-icon">✅</span><span>${t('nav.tasks')}</span><span class="bn-dot" id="bn-tasks-dot" style="display:none"></span></button>
+      <button class="bn-item" data-page="kpi" onclick="navigate('kpi')"><span class="bn-icon">🏆</span><span>${t('nav.kpi')}</span></button>
+      <button class="bn-item" data-page="profile" onclick="navigate('profile')"><span class="bn-icon">👤</span><span>${t('nav.profile')}</span></button>
+      <button class="bn-item" onclick="toggleSidebar()"><span class="bn-icon">☰</span><span>${currentLang==='th'?'เมนู':'Menu'}</span></button>
+    </div>`;
   document.getElementById('content').innerHTML = buildPagesHTML();
   populateDropdowns();
   const dateEl = document.getElementById('db-date');
@@ -1457,6 +1486,7 @@ function navigate(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById(`page-${page}`); if (pg) pg.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  document.querySelectorAll('.bn-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   updateTopbarTitle(page); closeSidebar(); window.scrollTo(0, 0);
   const loaders = { dashboard: loadDashboard, tasks: loadTasks, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
   if (loaders[page]) loaders[page]();
@@ -1557,6 +1587,8 @@ async function loadDashboard() {
     }
     const badge = document.getElementById('badge-tasks');
     if (badge) { const pending = stats.pending||0; badge.textContent = pending; badge.style.display = pending>0?'':'none'; }
+    const bnDot = document.getElementById('bn-tasks-dot');
+    if (bnDot) bnDot.style.display = (stats.pending||0) > 0 ? '' : 'none';
     drawDonut(stats);
   } catch(e) { toast(e.message, 'error'); }
   finally { hideLoading(); }
