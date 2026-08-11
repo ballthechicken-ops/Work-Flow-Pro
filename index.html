@@ -687,6 +687,8 @@ let categoriesCache = [];
 let taskCurrentPage = 1;
 const TASKS_PER_PAGE = 10;
 let _isSaving = false;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
 
 const isAdmin   = () => currentUser && currentUser.role === 'Admin';
 const isManager = () => currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Manager');
@@ -1201,6 +1203,7 @@ function buildLayout() {
       <div class="nav-section-label">${currentLang === 'th' ? 'หลัก' : 'Main'}</div>
       <div class="nav-item active" onclick="navigate('dashboard')" data-page="dashboard"><span class="nav-icon">📊</span><span>${t('nav.dashboard')}</span></div>
       <div class="nav-item" onclick="navigate('tasks')" data-page="tasks"><span class="nav-icon">✅</span><span>${t('nav.tasks')}</span><span class="nav-badge" id="badge-tasks" style="display:none">0</span></div>
+      <div class="nav-item" onclick="navigate('calendar')" data-page="calendar"><span class="nav-icon">📅</span><span>${t('nav.calendar')}</span></div>
       <div class="nav-item" onclick="navigate('kpi')" data-page="kpi"><span class="nav-icon">🏆</span><span>${t('nav.kpi')}</span></div>
       <div class="nav-item" onclick="navigate('salary')" data-page="salary"><span class="nav-icon">💰</span><span>${t('nav.salary')}</span></div>
       ${isManagerUser ? `<div class="nav-item" onclick="navigate('org')" data-page="org"><span class="nav-icon">🏢</span><span>${t('nav.org')}</span></div>` : ''}
@@ -1324,6 +1327,21 @@ function buildPagesHTML() {
       </div>
     </div>
     <div id="task-list"></div>
+  </div>
+
+  <div class="page" id="page-calendar">
+    <div class="page-header">
+      <div><div class="page-title">📅 ${t('nav.calendar')}</div><div class="page-sub">แสดงเฉพาะกำหนดส่งของงานที่มีอยู่แล้ว ไม่มีข้อมูลเพิ่มเติม</div></div>
+    </div>
+    <div class="card"><div class="card-body">
+      <div class="calendar-nav"><button class="btn btn-secondary btn-sm" onclick="changeCalMonth(-1)">◀</button><div class="cal-month-title" id="cal-month-title"></div><button class="btn btn-secondary btn-sm" onclick="changeCalMonth(1)">▶</button></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:.76rem;color:var(--text-sub)">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-right:4px"></span>เกินกำหนด</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-light);margin-right:4px"></span>รอดำเนินการ</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:4px"></span>เสร็จสิ้น</span>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div></div>
   </div>
 
   <div class="page" id="page-kpi">
@@ -1488,11 +1506,11 @@ function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   document.querySelectorAll('.bn-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   updateTopbarTitle(page); closeSidebar(); window.scrollTo(0, 0);
-  const loaders = { dashboard: loadDashboard, tasks: loadTasks, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
+  const loaders = { dashboard: loadDashboard, tasks: loadTasks, calendar: loadCalendarPage, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
   if (loaders[page]) loaders[page]();
 }
 async function refreshCurrentPage() {
-  const loaders = { dashboard: loadDashboard, tasks: loadTasks, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
+  const loaders = { dashboard: loadDashboard, tasks: loadTasks, calendar: loadCalendarPage, kpi: loadKPI, users: loadUsers, org: loadOrg, audit: loadAuditLogs, reports: initReports, deductions: loadDeductions };
   if (loaders[currentPage]) await loaders[currentPage]();
 }
 
@@ -1970,6 +1988,59 @@ function renderPaginationControls(totalPages) {
   container.innerHTML = html;
 }
 function changeTaskPage(newPage) { taskCurrentPage = newPage; renderTaskList(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+/* ══════════════════ TASK CALENDAR (แสดงเฉพาะกำหนดส่งงาน — ไม่มีตารางใหม่ ใช้ tasksCache ที่มีอยู่แล้ว) ══════════════════ */
+const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_TH = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.']; const DAYS_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+async function loadCalendarPage() {
+  if (!tasksCache.length) { try { const res = await callAPI('GET_TASKS'); tasksCache = res.data || []; } catch(e) { toast(e.message,'error'); } }
+  renderTaskCalendar();
+}
+function changeCalMonth(dir) { calMonth += dir; if (calMonth>11) { calMonth=0; calYear++; } if (calMonth<0) { calMonth=11; calYear--; } renderTaskCalendar(); }
+function renderTaskCalendar() {
+  const months = currentLang==='th'?MONTHS_TH:MONTHS_EN, days = currentLang==='th'?DAYS_TH:DAYS_EN;
+  const yearDisplay = currentLang==='th'?calYear+543:calYear;
+  document.getElementById('cal-month-title').textContent = `${months[calMonth]} ${yearDisplay}`;
+  const grid = document.getElementById('calendar-grid'); const today = todayStr();
+  let html = days.map(d => `<div class="cal-day-header">${d}</div>`).join('');
+  const firstDay = new Date(calYear,calMonth,1).getDay(), daysInMonth = new Date(calYear,calMonth+1,0).getDate(), prevMonthDays = new Date(calYear,calMonth,0).getDate();
+  for (let i=firstDay-1;i>=0;i--) html += `<div class="cal-day other-month"><div class="cal-day-num">${prevMonthDays-i}</div></div>`;
+  for (let d=1; d<=daysInMonth; d++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayOfWeek = new Date(calYear,calMonth,d).getDay();
+    const isToday = ds===today, isWeekend = (dayOfWeek===0||dayOfWeek===6);
+    const dayTasks = tasksCache.filter(tk => tk.deadline === ds && tk.status !== 'cancelled');
+    let cls = 'cal-day' + (isToday?' today':'') + (isWeekend&&!isToday?' weekend':'');
+    const dotsHtml = dayTasks.slice(0,4).map(tk => {
+      const isLate = tk.deadline < today && tk.status!=='done';
+      const color = tk.status==='done' ? 'var(--success)' : (isLate ? 'var(--danger)' : 'var(--text-light)');
+      return `<div style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;margin:1px;"></div>`;
+    }).join('');
+    const countBadge = dayTasks.length ? `<div style="font-size:.62rem;color:var(--text-sub);margin-top:2px;">${dayTasks.length} งาน</div>` : '';
+    html += `<div class="${cls}" onclick="showCalDayTasks('${ds}')"><div class="cal-day-num">${d}</div><div>${dotsHtml}</div>${countBadge}</div>`;
+  }
+  const totalCells = firstDay+daysInMonth, remaining = totalCells%7?7-(totalCells%7):0;
+  for (let i=1;i<=remaining;i++) html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  grid.innerHTML = html;
+}
+function showCalDayTasks(ds) {
+  const dayTasks = tasksCache.filter(tk => tk.deadline === ds && tk.status !== 'cancelled');
+  const label = new Date(ds+'T00:00:00').toLocaleDateString(currentLang==='th'?'th-TH':'en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  if (!dayTasks.length) { toast(`ไม่มีงานครบกำหนดวันที่ ${fmtDate(ds)}`, 'info'); return; }
+  document.getElementById('task-detail-body').innerHTML = `
+    <div style="font-weight:700;margin-bottom:14px;font-size:1rem">📅 ${label}</div>
+    ${dayTasks.map(tk => `
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="closeModal('modal-task-detail');viewTaskDetail(${tk.id})">
+        ${avatarHtml(tk.assignedTo,28)}
+        <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:.88rem;">${tk.title}</div><div style="font-size:.76rem;color:var(--text-sub);">${getUserName(tk.assignedTo)}</div></div>
+        <span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span>
+      </div>`).join('')}
+  `;
+  document.getElementById('detail-modal-title').textContent = 'งานครบกำหนดวันนี้';
+  document.getElementById('task-detail-actions').innerHTML = `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail')" style="flex:1">ปิด</button>`;
+  openModal('modal-task-detail');
+}
 
 /* ══════════════════ CATEGORIES ══════════════════ */
 async function loadCategories() { try { const res = await callAPI('GET_CATEGORIES'); categoriesCache = res.data || []; renderCategoryList(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
