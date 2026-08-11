@@ -438,7 +438,14 @@
         <div class="input-group"><label class="input-label">เวลาเริ่ม</label><input type="time" class="input-field" id="task-start-time" /></div>
       </div>
       <div class="input-row">
-        <div class="input-group"><label class="input-label">กำหนดส่ง</label><input type="date" class="input-field" id="task-deadline" /></div>
+        <div class="input-group"><label class="input-label">กำหนดส่ง *</label><input type="date" class="input-field" id="task-deadline" required />
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setTaskDeadlineQuick(0)">วันนี้</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setTaskDeadlineQuick(1)">พรุ่งนี้</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setTaskDeadlineQuick(3)">3 วัน</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setTaskDeadlineQuick(7)">7 วัน</button>
+          </div>
+        </div>
         <div class="input-group"><label class="input-label">เวลาสิ้นสุด</label><input type="time" class="input-field" id="task-end-time" /></div>
       </div>
       <div class="input-group" id="group-task-assign"><label class="input-label">มอบหมายให้</label><select class="select-field" id="task-assign"></select></div>
@@ -1727,6 +1734,10 @@ function _renderAdvFilterTags(f) {
   if (tagsEl) tagsEl.innerHTML = active.map(d => `<span class="adv-tag">${d.label(f[d.key])}<button class="adv-tag-remove" onclick="(${d.clear.toString()})()">✕</button></span>`).join('');
 }
 
+function setTaskDeadlineQuick(daysFromNow) {
+  const d = new Date(Date.now() + daysFromNow*86400000);
+  document.getElementById('task-deadline').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function openNewTaskModal() {
   document.getElementById('task-edit-id').value = '';
   document.getElementById('task-title').value = '';
@@ -1736,7 +1747,7 @@ function openNewTaskModal() {
   document.getElementById('task-source').value = 'assigned';
   document.getElementById('task-start-date').value = todayStr();
   document.getElementById('task-start-time').value = '';
-  document.getElementById('task-deadline').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  document.getElementById('task-deadline').value = '';
   document.getElementById('task-end-time').value = '';
   document.getElementById('task-link').value = '';
   clearTaskImage();
@@ -1770,7 +1781,7 @@ function duplicateTask(id) {
   document.getElementById('task-source').value = src.source || 'assigned';
   document.getElementById('task-start-date').value = todayStr();
   document.getElementById('task-start-time').value = src.startTime || '';
-  document.getElementById('task-deadline').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  document.getElementById('task-deadline').value = '';
   document.getElementById('task-end-time').value = src.endTime || '';
   const assignEl = document.getElementById('task-assign'); if (assignEl && [...assignEl.options].some(o=>o.value===src.assignedTo)) assignEl.value = src.assignedTo;
   document.getElementById('modal-task-title').textContent = '📋 คัดลอกงาน (แก้ไขรายละเอียดแล้วบันทึก)';
@@ -1807,6 +1818,9 @@ async function saveTask() {
   if (_isSaving) return;
   const title = document.getElementById('task-title').value.trim();
   if (!title) return toast('ต้องระบุชื่องาน', 'warning');
+  const deadlineVal = document.getElementById('task-deadline').value;
+  const sourceVal = document.getElementById('task-source').value;
+  if (!deadlineVal && sourceVal === 'assigned') return toast('กรุณาเลือกกำหนดส่ง (แตะปุ่ม "วันนี้" ได้เลยถ้างานเสร็จวันนี้)', 'warning');
   const editId = document.getElementById('task-edit-id').value;
   const pointsInput = parseInt(document.getElementById('task-points').value) || 0;
   const payload = {
