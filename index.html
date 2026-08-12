@@ -71,7 +71,7 @@
     #sidebar-backdrop.open { display: block; }
     #main-app { display: none; min-height: 100vh; }
     #main-app.active { display: block; }
-    #sidebar { width: var(--sidebar-w); background: var(--primary); display: flex; flex-direction: column; position: fixed; top:0; left:0; bottom:0; z-index:100; overflow-y: auto; overflow-x: hidden; transition: transform var(--transition); }
+    #sidebar { width: var(--sidebar-w); background: var(--primary); display: flex; flex-direction: column; position: fixed; top:0; left:0; bottom:0; z-index:160; overflow-y: auto; overflow-x: hidden; transition: transform var(--transition); }
     .sidebar-header { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.1); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
     .sidebar-logo-icon { width: 40px; height: 40px; background: rgba(255,255,255,.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; color:#fff; flex-shrink: 0; }
     .sidebar-title { color:#fff; font-weight:700; font-size:1rem; line-height: 1.2; }
@@ -224,7 +224,8 @@
     /* ══════════════════ BOTTOM NAV (มือถือเท่านั้น) ══════════════════ */
     #bottom-nav { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
       background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(15,36,96,.08);
-      padding-bottom: env(safe-area-inset-bottom, 0px); }
+      padding-bottom: env(safe-area-inset-bottom, 0px); transition: transform .2s ease; }
+    #bottom-nav.hide-for-sidebar { transform: translateY(100%); }
     #bottom-nav .bn-row { display: flex; align-items: stretch; height: 60px; }
     #bottom-nav .bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 2px; color: var(--text-sub); font-size: .68rem; font-weight: 600; background: none; border: none;
@@ -240,6 +241,10 @@
       .task-actions { gap: 8px; }
       .topbar-btn, #menu-toggle { min-width: 42px; min-height: 42px; }
       .nav-item { min-height: 52px; }
+      .filters { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+        margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+      .filters::-webkit-scrollbar { display: none; }
+      .filter-chip { flex-shrink: 0; white-space: nowrap; }
     }
     @media (max-width: 900px) {
       #sidebar { transform: translateX(-100%); box-shadow: none; }
@@ -496,6 +501,18 @@
     <div class="modal-header"><div class="modal-title">🔔 สรุปเรื่องด่วนของคุณ</div><button class="modal-close" onclick="closeModal('modal-urgent-alert')">✕</button></div>
     <div class="modal-body" id="urgent-alert-body"></div>
     <div class="modal-footer"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeModal('modal-urgent-alert')">รับทราบ</button></div>
+  </div>
+</div>
+
+<canvas id="confetti-canvas" style="display:none;position:fixed;inset:0;z-index:9998;pointer-events:none;width:100vw;height:100vh;"></canvas>
+<div class="modal-overlay modal-center" id="modal-celebrate" style="z-index:9999;">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div class="modal-body" style="padding:36px 24px;">
+      <div id="celebrate-icon" style="font-size:3.4rem;margin-bottom:10px;">🎉</div>
+      <div id="celebrate-title" style="font-size:1.25rem;font-weight:800;color:var(--primary);margin-bottom:8px;">ยินดีด้วย!</div>
+      <div id="celebrate-sub" style="font-size:.9rem;color:var(--text-sub);line-height:1.6;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:20px;" onclick="closeCelebration()">เย่! 🙌</button>
+    </div>
   </div>
 </div>
 
@@ -857,6 +874,14 @@ async function _dispatchAPI(action, payload) {
       const mgrMap = {}; (mgrRows||[]).forEach(r => { (mgrMap[r.user_id] = mgrMap[r.user_id]||[]).push(r.manager_id); });
       return { success:true, data:(data||[]).map(u => mapUser(u, { managerIds: mgrMap[u.id] || [] })) };
     }
+    case 'GET_SETTING': {
+      const { data, error } = await supabase.from('app_settings').select('value').eq('key', payload.key).maybeSingle();
+      if (error) throw error; return { success:true, value: data?.value || null };
+    }
+    case 'SET_SETTING': {
+      const { error } = await supabase.from('app_settings').upsert({ key: payload.key, value: payload.value, updated_by: currentUser.id, updated_at: new Date().toISOString() });
+      if (error) throw error; return { success:true };
+    }
     case 'SET_MANAGERS': { const { error } = await supabase.rpc('set_user_managers', { p_user_id: payload.userId, p_manager_ids: payload.managerIds || [] }); if (error) throw error; return { success:true }; }
     case 'CHANGE_PASSWORD': {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1215,10 +1240,10 @@ function buildLayout() {
       <div class="nav-item" onclick="navigate('calendar')" data-page="calendar"><span class="nav-icon">📅</span><span>${t('nav.calendar')}</span></div>
       <div class="nav-item" onclick="navigate('kpi')" data-page="kpi"><span class="nav-icon">🏆</span><span>${t('nav.kpi')}</span></div>
       <div class="nav-item" onclick="navigate('salary')" data-page="salary"><span class="nav-icon">💰</span><span>${t('nav.salary')}</span></div>
-      ${isManagerUser ? `<div class="nav-item" onclick="navigate('org')" data-page="org"><span class="nav-icon">🏢</span><span>${t('nav.org')}</span></div>` : ''}
+      ${isManagerUser ? `<div class="nav-item" onclick="navigate('org')" data-page="org"><span class="nav-icon">🏢</span><span>${t('nav.org')}</span></div>
+        <div class="nav-item" onclick="navigate('deductions')" data-page="deductions"><span class="nav-icon">⚠️</span><span>${t('nav.deductions')}</span></div>` : ''}
       ${isAdminUser ? `<div class="nav-section-label">${currentLang === 'th' ? 'ผู้ดูแลระบบ' : 'Admin'}</div>
         <div class="nav-item" onclick="navigate('users')" data-page="users"><span class="nav-icon">👥</span><span>${t('nav.users')}</span></div>
-        <div class="nav-item" onclick="navigate('deductions')" data-page="deductions"><span class="nav-icon">⚠️</span><span>${t('nav.deductions')}</span></div>
         <div class="nav-item" onclick="navigate('reports')" data-page="reports"><span class="nav-icon">📈</span><span>${t('nav.reports')}</span></div>
         <div class="nav-item" onclick="navigate('audit')" data-page="audit"><span class="nav-icon">🔍</span><span>${t('nav.audit')}</span></div>` : ''}
       <div class="nav-section-label">${currentLang === 'th' ? 'บัญชีผู้ใช้' : 'Account'}</div>
@@ -1441,8 +1466,13 @@ function buildPagesHTML() {
   </div>
 
   <div class="page" id="page-org">
-    <div class="page-header"><div><div class="page-title">🏢 ${t('nav.org')}</div></div></div>
-    <div class="card"><div class="card-body" id="org-chart-body"><div class="empty-state"><p>Loading...</p></div></div></div>
+    <div class="page-header"><div><div class="page-title">🏢 ${t('nav.org')}</div></div>
+      ${isAdminUser ? `<label class="btn btn-secondary" style="cursor:pointer;">📎 แนบรูปผังองค์กร<input type="file" accept="image/*" style="display:none" onchange="handleOrgImageUpload(this)" /></label>` : ''}
+    </div>
+    <div class="card" id="org-image-card" style="display:none"><div class="card-header">🖼️ ผังองค์กร (รูปภาพ)${isAdminUser?` <button class="btn btn-danger btn-sm" onclick="removeOrgImage()">🗑 ลบรูป</button>`:''}</div>
+      <div class="card-body" style="text-align:center;"><img id="org-image-preview" src="" style="max-width:100%;border-radius:10px;cursor:pointer;" onclick="openLightbox(this.src)" /></div>
+    </div>
+    <div class="card"><div class="card-header">🌳 โครงสร้างแบบต้นไม้ (สร้างอัตโนมัติจากข้อมูลหัวหน้า-ลูกทีม)</div><div class="card-body" id="org-chart-body"><div class="empty-state"><p>Loading...</p></div></div></div>
   </div>
 
   <div class="page" id="page-deductions">
@@ -1534,8 +1564,8 @@ function populateDropdowns() {
 
 /* ══════════════════ NAVIGATION ══════════════════ */
 function updateTopbarTitle(page) { const el = document.getElementById('topbar-title'); if (el) el.textContent = t(`page.${page}`) || page; }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-backdrop').classList.toggle('open'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-backdrop').classList.remove('open'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-backdrop').classList.toggle('open'); document.getElementById('bottom-nav')?.classList.toggle('hide-for-sidebar'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-backdrop').classList.remove('open'); document.getElementById('bottom-nav')?.classList.remove('hide-for-sidebar'); }
 function navigate(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1552,18 +1582,64 @@ async function refreshCurrentPage() {
 }
 
 /* ══════════════════ DASHBOARD ══════════════════ */
+function _computeLocalDashboardStats(tasksArr) {
+  const today = todayStr();
+  const counts = { pending:0, done:0, overdue:0, cancelled:0, total: tasksArr.length };
+  tasksArr.forEach(t => {
+    const isLate = t.deadline && t.deadline < today && t.status!=='done' && t.status!=='cancelled';
+    if (t.status==='cancelled') counts.cancelled++;
+    else if (isLate) counts.overdue++;
+    else if (t.status==='done') counts.done++;
+    else counts.pending++;
+  });
+  const doneAssigned = tasksArr.filter(t => t.status==='done' && t.source==='assigned' && t.deadline && t.completedAt);
+  const onTimeCount = doneAssigned.filter(t => t.completedAt.substring(0,10) <= t.deadline).length;
+  const onTimeRate = doneAssigned.length ? Math.round((onTimeCount/doneAssigned.length)*100) : null;
+  const in7days = new Date(); in7days.setDate(in7days.getDate()+7);
+  const in7str = `${in7days.getFullYear()}-${String(in7days.getMonth()+1).padStart(2,'0')}-${String(in7days.getDate()).padStart(2,'0')}`;
+  const upcomingDeadlines = tasksArr.filter(t => t.deadline && t.deadline >= today && t.deadline <= in7str && t.status!=='done' && t.status!=='cancelled')
+    .sort((a,b) => a.deadline.localeCompare(b.deadline)).slice(0,6)
+    .map(t => ({ id:t.id, title:t.title, deadline:t.deadline, priority:t.priority, assignedTo:t.assignedTo }));
+  const recentTasks = tasksArr.slice(-8).reverse().map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
+  const byUser = {};
+  tasksArr.forEach(t => {
+    if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { userId:t.assignedTo, fullName: getUserName(t.assignedTo), pending:0, overdue:0 };
+    const isLate = t.deadline && t.deadline < today && t.status!=='done' && t.status!=='cancelled';
+    if (isLate) byUser[t.assignedTo].overdue++; else if (t.status==='pending') byUser[t.assignedTo].pending++;
+  });
+  const teamOverview = Object.values(byUser).sort((a,b) => (b.pending+b.overdue)-(a.pending+a.overdue)).slice(0,8);
+  return { stats: counts, onTimeRate, upcomingDeadlines, recentTasks, teamOverview };
+}
 async function loadDashboard() {
   showLoading();
   try {
     const filterEl = document.getElementById('dash-target-filter');
     if (filterEl && filterEl.options.length <= 2 && isManager()) {
+      if (isAdmin()) {
+        const depts = [...new Set(usersCache.map(u => u.department).filter(Boolean))].sort();
+        if (depts.length) {
+          const grp = document.createElement('optgroup'); grp.label = '🏢 ตามแผนก/ทีม';
+          depts.forEach(d => { const o = document.createElement('option'); o.value = 'dept:'+d; o.textContent = d; grp.appendChild(o); });
+          filterEl.appendChild(grp);
+        }
+      }
       const teamMembers = usersCache.filter(u => u.id !== currentUser.id && (isAdmin() || hasManager(u, currentUser.id)));
-      teamMembers.forEach(u => { const o = document.createElement('option'); o.value = u.id; o.textContent = '👤 ' + u.fullName; filterEl.appendChild(o); });
+      const grpPeople = document.createElement('optgroup'); grpPeople.label = '👤 รายบุคคล';
+      teamMembers.forEach(u => { const o = document.createElement('option'); o.value = u.id; o.textContent = u.fullName; grpPeople.appendChild(o); });
+      filterEl.appendChild(grpPeople);
     }
-    const targetUserId = filterEl ? filterEl.value : 'self';
+    const filterVal = filterEl ? filterEl.value : 'self';
+    const isDeptFilter = filterVal.startsWith('dept:');
+    const targetUserId = isDeptFilter ? 'team' : filterVal;
     const bundle = await callAPI('GET_DASHBOARD_BUNDLE', { targetUserId });
-    const { stats, points, recentTasks = [], onTimeRate, upcomingDeadlines = [], teamOverview } = bundle.dashboard;
     tasksCache = bundle.tasks || [];
+    let { stats, points, recentTasks = [], onTimeRate, upcomingDeadlines = [], teamOverview } = bundle.dashboard;
+    if (isDeptFilter) {
+      const deptName = filterVal.slice(5);
+      const deptTasks = tasksCache.filter(t => { const u = usersCache.find(x => x.id === t.assignedTo); return u && u.department === deptName; });
+      const local = _computeLocalDashboardStats(deptTasks);
+      stats = local.stats; onTimeRate = local.onTimeRate; upcomingDeadlines = local.upcomingDeadlines; recentTasks = local.recentTasks; teamOverview = local.teamOverview;
+    }
     ['total','done','overdue','cancelled'].forEach(k => { const el = document.getElementById(`s-${k}`); if (el) el.textContent = stats[k] ?? 0; });
 
     const otVal = document.getElementById('ontime-rate-value');
@@ -1640,6 +1716,7 @@ async function loadDashboard() {
       if (el('kpi-pct')) el('kpi-pct').textContent = 'MAX';
       if (el('kpi-status-msg')) el('kpi-status-msg').innerHTML = `🎉 คุณคือ <strong>${currentRank.name}</strong> จุดสูงสุดแล้ว!`;
     }
+    _checkRankCelebration(currentPoints, currentRank);
     const badge = document.getElementById('badge-tasks');
     if (badge) { const pending = stats.pending||0; badge.textContent = pending; badge.style.display = pending>0?'':'none'; }
     const bnDot = document.getElementById('bn-tasks-dot');
@@ -1745,11 +1822,24 @@ function renderTaskList() {
   if (f.source) tasks = tasks.filter(tk => tk.source === f.source);
   _renderAdvFilterTags(f);
   tasks.sort((a,b) => {
-    if (a.status==='done' && b.status==='done') return (b.completedAt||'').localeCompare(a.completedAt||'');
-    if ((a.status==='cancelled'||a.status==='rejected') && (b.status==='cancelled'||b.status==='rejected')) return (b.updatedAt||'').localeCompare(a.updatedAt||'');
-    const dlA=a.deadline||'9999-12-31', dlB=b.deadline||'9999-12-31';
-    if (dlA!==dlB) return dlA.localeCompare(dlB);
-    return b.id - a.id;
+    function sortRank(tk) {
+      const isOverdue = tk.deadline && tk.deadline < today && tk.status !== 'done' && tk.status !== 'cancelled';
+      if (isOverdue) return 0;
+      if (tk.status === 'pending') return 1;
+      if (tk.status === 'rejected') return 2;
+      if (tk.status === 'done') return 3;
+      return 4; // cancelled
+    }
+    const rankA = sortRank(a), rankB = sortRank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    if (rankA === 0 || rankA === 1) {
+      // เกินกำหนด/รอดำเนินการ: กำหนดส่งใกล้สุดขึ้นก่อน
+      return (a.deadline||'9999-12-31').localeCompare(b.deadline||'9999-12-31');
+    }
+    // ตีกลับ/เสร็จแล้ว/ยกเลิก: ล่าสุดขึ้นก่อน
+    const dateField = rankA === 3 ? 'completedAt' : 'updatedAt';
+    const ta = new Date(a[dateField] || 0).getTime(), tb = new Date(b[dateField] || 0).getTime();
+    return tb - ta;
   });
   const chip = document.getElementById('task-total-chip'); if (chip) chip.textContent = tasks.length;
   const totalPages = Math.ceil(tasks.length / TASKS_PER_PAGE) || 1;
@@ -2183,6 +2273,7 @@ async function loadKPI() {
 
     const activeRewards = rewards.filter(r => r.status !== 'closed');
     const closedRewards = rewards.filter(r => r.status === 'closed');
+    activeRewards.forEach(r => _checkRewardCelebration(r));
     function rewardCard(r) {
       const myProgress = r.myProgress || 0;
       const pct = Math.min(100, Math.round((myProgress / (r.targetPoints||1)) * 100));
@@ -2375,6 +2466,7 @@ async function deleteUser(id) {
 /* ══════════════════ ORG ══════════════════ */
 async function loadOrg() {
   const el = document.getElementById('org-chart-body');
+  try { await loadOrgImage(); } catch(e) { console.warn('loadOrgImage:', e); }
   try {
     const res = await callAPI('GET_ORG'); const users = res.data || [];
     const roots = users.filter(u => !u.managerIds || u.managerIds.length === 0);
@@ -2390,6 +2482,28 @@ async function loadOrg() {
     }
     el.innerHTML = roots.length ? roots.map(r => renderNode(r, 0)).join('') : `<div class="empty-state"><p>ยังไม่มีโครงสร้างองค์กร</p></div>`;
   } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
+}
+async function loadOrgImage() {
+  const res = await callAPI('GET_SETTING', { key: 'org_chart_image' });
+  const card = document.getElementById('org-image-card'); const img = document.getElementById('org-image-preview');
+  if (res.value) { img.src = res.value; card.style.display = ''; } else { card.style.display = 'none'; }
+}
+async function handleOrgImageUpload(input) {
+  const file = input.files?.[0]; if (!file) return;
+  showLoading();
+  try {
+    const base64 = await compressMultipleImage(file, 400000);
+    const url = await uploadImageToStorage(base64, 'org');
+    await callAPI('SET_SETTING', { key: 'org_chart_image', value: url });
+    toast('อัปโหลดรูปผังองค์กรแล้ว ✅', 'success');
+    await loadOrgImage();
+  } catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
+}
+async function removeOrgImage() {
+  if (!confirm('ต้องการลบรูปผังองค์กรนี้หรือไม่?')) return;
+  showLoading();
+  try { await callAPI('SET_SETTING', { key: 'org_chart_image', value: null }); toast('ลบรูปแล้ว', 'info'); await loadOrgImage(); }
+  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
 }
 
 /* ══════════════════ REPORTS ══════════════════ */
@@ -2447,16 +2561,37 @@ async function loadSnapshotHistory() {
 }
 
 /* ══════════════════ AUDIT ══════════════════ */
+let auditLogsCache = []; let auditCurrentPage = 1;
+const AUDIT_PER_PAGE = 20;
 async function loadAuditLogs() {
   const el = document.getElementById('audit-log-list');
   try {
-    const res = await callAPI('GET_LOGS'); const logs = res.data || [];
-    el.innerHTML = logs.length ? logs.map(l => `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)">
+    const res = await callAPI('GET_LOGS'); auditLogsCache = res.data || []; auditCurrentPage = 1;
+    renderAuditLogs();
+  } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
+}
+function renderAuditLogs() {
+  const el = document.getElementById('audit-log-list');
+  const totalPages = Math.ceil(auditLogsCache.length / AUDIT_PER_PAGE) || 1;
+  if (auditCurrentPage > totalPages) auditCurrentPage = totalPages;
+  const start = (auditCurrentPage-1)*AUDIT_PER_PAGE;
+  const pageLogs = auditLogsCache.slice(start, start+AUDIT_PER_PAGE);
+  el.innerHTML = pageLogs.length ? pageLogs.map(l => `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)">
       <div style="width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0">📝</div>
       <div style="flex:1;min-width:0"><div style="font-weight:600">${l.action} — ${l.target}</div><div style="font-size:.78rem;color:var(--text-sub);margin-top:2px">โดย: ${getUserName(l.userId)}${l.prev?` | ก่อน: <em>${l.prev}</em>`:''}${l.next?` → หลัง: <em>${l.next}</em>`:''}</div></div>
       <div style="font-size:.75rem;color:var(--text-light);flex-shrink:0;text-align:right">${fmtDateTime(l.ts)}</div></div>`).join('') : `<div class="empty-state"><div class="empty-icon">🔍</div><p>ไม่มี Log</p></div>`;
-  } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
+  let pagerEl = document.getElementById('audit-pagination');
+  if (!pagerEl) { document.getElementById('page-audit').insertAdjacentHTML('beforeend', '<div id="audit-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap;"></div>'); pagerEl = document.getElementById('audit-pagination'); }
+  if (totalPages <= 1) { pagerEl.innerHTML = ''; return; }
+  let html = `<button class="btn btn-secondary btn-sm" ${auditCurrentPage===1?'disabled style="opacity:.4"':`onclick="changeAuditPage(${auditCurrentPage-1})"`}>◀</button>`;
+  for (let i=1;i<=totalPages;i++) {
+    if (i===1||i===totalPages||(i>=auditCurrentPage-1&&i<=auditCurrentPage+1)) html += `<button class="btn ${i===auditCurrentPage?'btn-primary':'btn-secondary'} btn-sm" onclick="changeAuditPage(${i})">${i}</button>`;
+    else if (i===auditCurrentPage-2||i===auditCurrentPage+2) html += `<span style="align-self:center;color:var(--text-sub);">...</span>`;
+  }
+  html += `<button class="btn btn-secondary btn-sm" ${auditCurrentPage===totalPages?'disabled style="opacity:.4"':`onclick="changeAuditPage(${auditCurrentPage+1})"`}>▶</button>`;
+  pagerEl.innerHTML = html;
 }
+function changeAuditPage(p) { auditCurrentPage = p; renderAuditLogs(); window.scrollTo({top:0,behavior:'smooth'}); }
 async function clearAuditLogs() {
   if (!confirm('ต้องการล้าง Audit Log ทั้งหมด?')) return; showLoading();
   try { await callAPI('CLEAR_LOGS'); toast('ล้าง Log เรียบร้อย', 'info'); loadAuditLogs(); }
@@ -2730,6 +2865,61 @@ async function showUrgentAlertPopup() {
     `;
     openModal('modal-urgent-alert');
   } catch(e) { console.warn('showUrgentAlertPopup:', e); }
+}
+
+/* ══════════════════ CELEBRATION (พลุฉลอง เลื่อนขั้น / บรรลุเป้าหมายรางวัล) ══════════════════ */
+let _confettiTimer = null;
+function _runConfetti() {
+  const canvas = document.getElementById('confetti-canvas'); if (!canvas) return;
+  canvas.style.display = 'block';
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#0F766E','#14B8A6','#F59E0B','#DC2626','#0891B2','#22D3EE','#EAB308'];
+  const pieces = Array.from({length:120}, () => ({
+    x: Math.random()*canvas.width, y: -20 - Math.random()*canvas.height*0.5,
+    size: 5+Math.random()*6, color: colors[Math.floor(Math.random()*colors.length)],
+    speedY: 2+Math.random()*3.5, speedX: (Math.random()-0.5)*2.5, rotation: Math.random()*360, rotSpeed: (Math.random()-0.5)*10
+  }));
+  const startTime = Date.now(); const duration = 3200;
+  if (_confettiTimer) cancelAnimationFrame(_confettiTimer);
+  function frame() {
+    const elapsed = Date.now() - startTime;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p => {
+      p.y += p.speedY; p.x += p.speedX; p.rotation += p.rotSpeed;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rotation*Math.PI/180);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      ctx.restore();
+    });
+    if (elapsed < duration) { _confettiTimer = requestAnimationFrame(frame); }
+    else { canvas.style.display = 'none'; ctx.clearRect(0,0,canvas.width,canvas.height); }
+  }
+  frame();
+}
+function showCelebration(title, sub, icon) {
+  document.getElementById('celebrate-icon').textContent = icon || '🎉';
+  document.getElementById('celebrate-title').textContent = title || 'ยินดีด้วย!';
+  document.getElementById('celebrate-sub').textContent = sub || '';
+  openModal('modal-celebrate');
+  _runConfetti();
+}
+function closeCelebration() { closeModal('modal-celebrate'); if (_confettiTimer) cancelAnimationFrame(_confettiTimer); const c = document.getElementById('confetti-canvas'); if (c) c.style.display='none'; }
+function _checkRankCelebration(currentPoints, currentRank) {
+  if (!currentUser) return;
+  const key = `wf_last_rank_${currentUser.id}`;
+  const lastRankName = localStorage.getItem(key);
+  if (lastRankName && lastRankName !== currentRank.name) {
+    showCelebration('เลื่อนขั้นแล้ว! 🎊', `ยินดีด้วย! คุณเลื่อนขั้นเป็น "${currentRank.name}" แล้ว สะสมได้ ${currentPoints} EXP`, currentRank.icon);
+  }
+  localStorage.setItem(key, currentRank.name);
+}
+function _checkRewardCelebration(reward) {
+  if (!currentUser || reward.status === 'closed') return;
+  const key = `wf_reward_done_${currentUser.id}_${reward.id}`;
+  if (reward.myProgress >= reward.targetPoints && !localStorage.getItem(key)) {
+    localStorage.setItem(key, '1');
+    showCelebration('บรรลุเป้าหมายแล้ว! 🎉', `คุณทำคะแนนถึงเป้าของรางวัล "${reward.name}" แล้ว!`, '🏆');
+  }
 }
 
 /* ══════════════════ STARTUP ══════════════════ */
