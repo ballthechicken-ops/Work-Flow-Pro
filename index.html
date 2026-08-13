@@ -249,7 +249,7 @@
     @media (max-width: 900px) {
       #sidebar { transform: translateX(-100%); box-shadow: none; }
       #sidebar.open { transform: none; box-shadow: 8px 0 30px rgba(0,0,0,.2); }
-      #topbar { left: 0; } #content { margin-left: 0; padding: 16px; }
+      #topbar { left: 0; } #content { margin-left: 0; padding: 16px; padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
       #menu-toggle { display: flex !important; }
       .stat-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .grid-2 { grid-template-columns: 1fr; }
@@ -266,7 +266,7 @@
       :root { --topbar-h: 56px; } html { font-size: 15px; }
       .stat-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .stat-card { padding: 14px 14px; } .stat-value { font-size: 1.5rem; }
-      #content { padding: 12px; } .card-body { padding: 14px; }
+      #content { padding: 12px; padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } .card-body { padding: 14px; }
       .btn { padding: 10px 16px; font-size: .85rem; }
       .modal-footer { flex-direction: column-reverse; }
       .modal-footer .btn { width: 100%; justify-content: center; }
@@ -343,6 +343,10 @@
     .points-hint-box { background: #FFF7ED; border: 1.5px solid #FDE68A; border-radius: 10px; padding: 10px 14px; font-size: .82rem; color: #92400E; margin-top: 6px; }
     .paste-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 12px 16px; text-align: center; font-size: .83rem; color: var(--text-sub); cursor: pointer; transition: all var(--transition); margin-top: 8px; display: none; }
     @media (hover: hover) and (pointer: fine) { .paste-zone { display: block; } }
+    .file-chip { display:flex; align-items:center; gap:10px; padding:9px 12px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; }
+    .file-chip .fc-icon { font-size:1.3rem; flex-shrink:0; }
+    .file-chip .fc-name { flex:1; min-width:0; font-size:.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .file-chip .fc-remove { flex-shrink:0; background:none; border:none; color:var(--danger); font-size:1rem; cursor:pointer; padding:2px 6px; }
     .paste-zone:hover, .paste-zone.drag-over { border-color: var(--secondary); background: #EFF6FF; color: var(--primary); }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -456,10 +460,14 @@
       </div>
       <div class="input-group" id="group-task-assign"><label class="input-label">มอบหมายให้</label><select class="select-field" id="task-assign"></select></div>
       <div class="input-group">
-        <label class="input-label">📁 อัปโหลดไฟล์เอกสาร (PDF, Word, Excel)</label>
-        <input type="file" class="input-field" id="task-file-upload" onchange="handleFileUpload(this)" />
+        <label class="input-label">📁 แนบไฟล์เอกสาร (PDF, Word, Excel — แนบได้หลายไฟล์)</label>
+        <label class="btn btn-secondary" style="width:100%;justify-content:center;cursor:pointer;">
+          📎 เลือกไฟล์แนบ
+          <input type="file" style="display:none" id="task-file-upload" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" onchange="handleFileUpload(this)" />
+        </label>
         <input type="hidden" id="task-link" />
-        <div id="file-upload-status" style="font-size: 0.8rem; color: var(--secondary); margin-top: 4px;"></div>
+        <div id="file-upload-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="file-upload-status" style="font-size: 0.78rem; color: var(--text-sub); margin-top: 4px;"></div>
       </div>
       <div class="input-group">
         <label class="input-label">📎 แนบรูปภาพก่อนทำ (เลือกได้สูงสุด 3 รูป)</label>
@@ -1332,20 +1340,41 @@ function buildPagesHTML() {
     </div>
 
     <div class="dash-tab-panel" id="dashtab-trend" style="display:none">
-      <div class="card"><div class="card-header">📈 แนวโน้มงานรายเดือน (6 เดือนย้อนหลัง)</div><div class="card-body">
+      <div class="card"><div class="card-header" style="flex-wrap:wrap;gap:10px;">
+        <span>📈 แนวโน้มงานรายเดือน</span>
+        <select class="select-field" id="trend-months-filter" onchange="renderMonthlyTrendChart()" style="max-width:160px;padding:6px 10px;font-size:.82rem;">
+          <option value="3">3 เดือนล่าสุด</option><option value="6" selected>6 เดือนล่าสุด</option><option value="12">12 เดือนล่าสุด</option>
+        </select>
+      </div><div class="card-body">
+        <div class="report-summary-grid" id="trend-summary-cards" style="margin-bottom:16px;"></div>
         <div style="position:relative;height:280px;"><canvas id="trend-chart"></canvas></div>
         <div style="font-size:.76rem;color:var(--text-sub);margin-top:10px;">นับจากวันครบกำหนดของงาน (deadline) ในแต่ละเดือน</div>
       </div></div>
     </div>
 
     <div class="dash-tab-panel" id="dashtab-category" style="display:none">
-      <div class="card"><div class="card-header">📂 สัดส่วนตามประเภทงาน</div><div class="card-body">
+      <div class="card"><div class="card-header" style="flex-wrap:wrap;gap:10px;">
+        <span>📂 สัดส่วนตามประเภทงาน</span>
+        <select class="select-field" id="category-status-filter" onchange="renderCategoryChart()" style="max-width:160px;padding:6px 10px;font-size:.82rem;">
+          <option value="">ทุกสถานะ</option><option value="done">เฉพาะเสร็จสิ้น</option><option value="pending">เฉพาะรอดำเนินการ</option>
+        </select>
+      </div><div class="card-body">
         <div style="position:relative;height:300px;"><canvas id="category-chart"></canvas></div>
       </div></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-header">⚡ สัดส่วนตามความเร่งด่วน</div><div class="card-body"><div style="position:relative;height:240px;"><canvas id="priority-chart"></canvas></div></div></div>
+        <div class="card"><div class="card-header">🏆 ประเภทงานที่มีอัตราเสร็จสูงสุด</div><div id="category-top-list"></div></div>
+      </div>
     </div>
 
     <div class="dash-tab-panel" id="dashtab-compare" style="display:none">
-      <div class="card"><div class="card-header">👥 เปรียบเทียบผลงานพนักงาน (คะแนนสะสมจากงานที่เสร็จ)</div><div class="card-body">
+      <div class="card"><div class="card-header" style="flex-wrap:wrap;gap:10px;">
+        <span>👥 เปรียบเทียบผลงานพนักงาน</span>
+        <select class="select-field" id="compare-metric-filter" onchange="renderCompareChart()" style="max-width:200px;padding:6px 10px;font-size:.82rem;">
+          <option value="points">คะแนนสะสม (จากงานที่เสร็จ)</option><option value="count">จำนวนงานที่เสร็จ</option><option value="ontime">อัตราส่งตรงเวลา (%)</option>
+        </select>
+      </div><div class="card-body">
+        <div class="report-summary-grid" id="compare-summary-cards" style="margin-bottom:16px;"></div>
         <div style="position:relative;height:340px;"><canvas id="compare-chart"></canvas></div>
       </div></div>
     </div>
@@ -1528,6 +1557,12 @@ function buildPagesHTML() {
         <div class="input-group"><label class="input-label">รหัสผ่านใหม่</label><input type="password" class="input-field" id="pw-new" /></div>
         <div class="input-group"><label class="input-label">ยืนยันรหัสผ่านใหม่</label><input type="password" class="input-field" id="pw-confirm" /></div>
         <button class="btn btn-secondary" onclick="changePassword()">🔒 เปลี่ยนรหัสผ่าน</button>
+      </div></div>
+      <div class="card"><div class="card-header">🔔 การแจ้งเตือนผ่านเบราว์เซอร์</div><div class="card-body">
+        <div style="font-size:.85rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6;">
+          เปิดใช้งานเพื่อรับการแจ้งเตือนเรื่องด่วน (งานเกินกำหนด/ถูกตีกลับ) แม้ไม่ได้เปิดแท็บ WorkFlow Pro อยู่ตรงหน้า — ใช้ได้ดีบนคอมพิวเตอร์และ Android ส่วน iPhone ต้อง "เพิ่มไปหน้าจอโฮม" ก่อนถึงจะรองรับ
+        </div>
+        <button class="btn btn-primary" onclick="requestBrowserNotifPermission()">🔔 เปิดการแจ้งเตือน</button>
       </div></div>
     </div>
   </div>`;
@@ -1752,10 +1787,19 @@ function switchDashTab(tab, el) {
 function _destroyChart(key) { if (_dashCharts[key]) { _dashCharts[key].destroy(); delete _dashCharts[key]; } }
 function renderMonthlyTrendChart() {
   const canvas = document.getElementById('trend-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const monthCount = parseInt(document.getElementById('trend-months-filter')?.value || '6');
   const months = []; const now = new Date();
-  for (let i=5;i>=0;i--) { const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label: d.toLocaleDateString(currentLang==='th'?'th-TH':'en-GB',{month:'short',year:'2-digit'}) }); }
+  for (let i=monthCount-1;i>=0;i--) { const d = new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label: d.toLocaleDateString(currentLang==='th'?'th-TH':'en-GB',{month:'short',year:'2-digit'}) }); }
   const doneCounts = months.map(m => tasksCache.filter(t => t.deadline && t.deadline.startsWith(m.key) && t.status==='done').length);
   const overdueCounts = months.map(m => tasksCache.filter(t => t.deadline && t.deadline.startsWith(m.key) && t.status!=='done' && t.status!=='cancelled' && t.deadline < todayStr()).length);
+  const totalCounts = months.map(m => tasksCache.filter(t => t.deadline && t.deadline.startsWith(m.key)).length);
+  const totalAll = totalCounts.reduce((a,b)=>a+b,0), totalDone = doneCounts.reduce((a,b)=>a+b,0), totalOverdue = overdueCounts.reduce((a,b)=>a+b,0);
+  const cardsEl = document.getElementById('trend-summary-cards');
+  if (cardsEl) cardsEl.innerHTML = [
+    { val: totalAll, lbl: 'งานทั้งหมดในช่วงนี้', color:'var(--primary)' },
+    { val: totalDone, lbl: 'เสร็จสิ้น', color:'var(--success)' },
+    { val: totalOverdue, lbl: 'เกินกำหนด', color:'var(--danger)' },
+  ].map(s => `<div class="report-summary-card"><div class="report-summary-val" style="color:${s.color}">${s.val}</div><div class="report-summary-lbl">${s.lbl}</div></div>`).join('');
   _destroyChart('trend');
   _dashCharts.trend = new Chart(canvas, {
     type: 'bar',
@@ -1768,8 +1812,10 @@ function renderMonthlyTrendChart() {
 }
 function renderCategoryChart() {
   const canvas = document.getElementById('category-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const statusFilter = document.getElementById('category-status-filter')?.value || '';
+  const filtered = statusFilter ? tasksCache.filter(t => t.status === statusFilter) : tasksCache;
   const byCat = {};
-  tasksCache.forEach(t => { const c = t.category || 'ไม่ระบุ'; if (!byCat[c]) byCat[c] = { total:0, done:0 }; byCat[c].total++; if (t.status==='done') byCat[c].done++; });
+  filtered.forEach(t => { const c = t.category || 'ไม่ระบุ'; if (!byCat[c]) byCat[c] = { total:0, done:0 }; byCat[c].total++; if (t.status==='done') byCat[c].done++; });
   const entries = Object.entries(byCat).sort((a,b) => b[1].total - a[1].total).slice(0,10);
   _destroyChart('category');
   _dashCharts.category = new Chart(canvas, {
@@ -1780,20 +1826,54 @@ function renderCategoryChart() {
     ] },
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
+  const byPrio = {}; filtered.forEach(t => { const p = t.priority||'Medium'; byPrio[p] = (byPrio[p]||0)+1; });
+  const prioLabels = { Low:'ต่ำ', Medium:'กลาง', High:'สูง', Critical:'วิกฤต' };
+  const prioColors = { Low:'#16A34A', Medium:'#0891B2', High:'#F59E0B', Critical:'#DC2626' };
+  const prioCanvas = document.getElementById('priority-chart');
+  if (prioCanvas && typeof Chart !== 'undefined') {
+    _destroyChart('priority');
+    const pKeys = Object.keys(byPrio);
+    _dashCharts.priority = new Chart(prioCanvas, {
+      type: 'doughnut',
+      data: { labels: pKeys.map(k=>prioLabels[k]||k), datasets: [{ data: pKeys.map(k=>byPrio[k]), backgroundColor: pKeys.map(k=>prioColors[k]||'#94A3B8') }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+    });
+  }
+  const topList = document.getElementById('category-top-list');
+  if (topList) {
+    const withRate = Object.entries(byCat).map(([name,v]) => ({ name, rate: v.total ? Math.round(v.done/v.total*100) : 0, total:v.total })).filter(x=>x.total>=2).sort((a,b)=>b.rate-a.rate).slice(0,5);
+    topList.innerHTML = withRate.length ? withRate.map(c => `<div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)"><div style="flex:1;font-weight:600;font-size:.87rem;">${c.name}</div><div style="width:100px"><div class="progress-bar-bg" style="height:6px"><div class="progress-bar-fill" style="width:${c.rate}%"></div></div></div><div style="font-weight:800;color:var(--primary);min-width:40px;text-align:right">${c.rate}%</div></div>`).join('') : `<div class="empty-state" style="padding:20px"><p style="font-size:.85rem">ยังไม่มีข้อมูลเพียงพอ</p></div>`;
+  }
 }
 function renderCompareChart() {
   const canvas = document.getElementById('compare-chart'); if (!canvas || typeof Chart === 'undefined') return;
+  const metric = document.getElementById('compare-metric-filter')?.value || 'points';
   const byUser = {};
-  tasksCache.filter(t => t.status==='done').forEach(t => {
-    if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { points:0, count:0 };
-    byUser[t.assignedTo].points += (t.points||0); byUser[t.assignedTo].count++;
+  tasksCache.forEach(t => {
+    if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { points:0, count:0, doneOnTime:0, doneAssigned:0 };
+    if (t.status==='done') {
+      byUser[t.assignedTo].points += (t.points||0); byUser[t.assignedTo].count++;
+      if (t.source==='assigned' && t.deadline && t.completedAt) { byUser[t.assignedTo].doneAssigned++; if (t.completedAt.substring(0,10) <= t.deadline) byUser[t.assignedTo].doneOnTime++; }
+    }
   });
-  const entries = Object.entries(byUser).map(([uid,v]) => ({ name:getUserName(uid), ...v })).sort((a,b) => b.points-a.points).slice(0,12);
+  let entries = Object.entries(byUser).map(([uid,v]) => ({ name:getUserName(uid), points:v.points, count:v.count, ontime: v.doneAssigned ? Math.round(v.doneOnTime/v.doneAssigned*100) : null }));
+  const metricKey = metric==='points'?'points':(metric==='count'?'count':'ontime');
+  const metricLabel = metric==='points'?'คะแนนสะสม':(metric==='count'?'จำนวนงานเสร็จ':'อัตราตรงเวลา (%)');
+  entries = entries.filter(e => e[metricKey] !== null).sort((a,b) => b[metricKey]-a[metricKey]).slice(0,12);
+  const cardsEl = document.getElementById('compare-summary-cards');
+  if (cardsEl) {
+    const top = entries[0]; const avg = entries.length ? Math.round(entries.reduce((s,e)=>s+e[metricKey],0)/entries.length) : 0;
+    cardsEl.innerHTML = [
+      { val: top ? top.name : '—', lbl: `🥇 อันดับ 1 (${metricLabel})`, color:'var(--warning)' },
+      { val: avg + (metric==='ontime'?'%':''), lbl: 'ค่าเฉลี่ยทีม', color:'var(--primary)' },
+      { val: entries.length, lbl: 'จำนวนคนที่มีข้อมูล', color:'var(--secondary)' },
+    ].map(s => `<div class="report-summary-card"><div class="report-summary-val" style="color:${s.color};font-size:1.1rem;">${s.val}</div><div class="report-summary-lbl">${s.lbl}</div></div>`).join('');
+  }
   _destroyChart('compare');
   _dashCharts.compare = new Chart(canvas, {
     type: 'bar',
     data: { labels: entries.map(e=>e.name), datasets: [
-      { label: 'คะแนนสะสม (จากงานที่เสร็จ)', data: entries.map(e=>e.points), backgroundColor: '#0F766E', borderRadius: 6 },
+      { label: metricLabel, data: entries.map(e=>e[metricKey]), backgroundColor: '#0F766E', borderRadius: 6 },
     ] },
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
   });
@@ -1930,16 +2010,16 @@ function openNewTaskModal() {
   document.getElementById('task-start-time').value = '';
   document.getElementById('task-deadline').value = '';
   document.getElementById('task-end-time').value = '';
-  document.getElementById('task-link').value = '';
+  tempTaskFiles = []; _renderFileChips(); document.getElementById('file-upload-status').textContent = '';
   clearTaskImage();
   document.getElementById('modal-task-title').textContent = '📋 สร้างงานใหม่';
   const canAssign = isManager() || currentUser.hasSubordinates;
   const ptEl = document.getElementById('task-points');
   if (ptEl?.closest('.input-group')) ptEl.closest('.input-group').style.display = isManager() ? '' : 'none';
-  document.getElementById('group-task-source').style.display = 'block';
+  document.getElementById('group-task-source').style.display = canAssign ? 'block' : 'none';
   document.getElementById('group-task-assign').style.display = canAssign ? 'block' : 'none';
   const sourceEl = document.getElementById('task-source');
-  if (!canAssign) { sourceEl.value = 'self'; const opt = sourceEl.querySelector('option[value="assigned"]'); if (opt) opt.disabled = true; }
+  if (!canAssign) { sourceEl.value = 'self'; }
   else { sourceEl.value = 'assigned'; const opt = sourceEl.querySelector('option[value="assigned"]'); if (opt) opt.disabled = false; }
   populateDropdowns();
   const assignEl = document.getElementById('task-assign');
@@ -1982,7 +2062,8 @@ function editTask(id) {
   document.getElementById('task-start-time').value = tk.startTime || '';
   document.getElementById('task-deadline').value = tk.deadline || '';
   document.getElementById('task-end-time').value = tk.endTime || '';
-  document.getElementById('task-link').value = tk.link || '';
+  tempTaskFiles = parseAttachments(tk.link); _renderFileChips();
+  document.getElementById('file-upload-status').textContent = tempTaskFiles.length ? `✅ มีไฟล์แนบ ${tempTaskFiles.length} ไฟล์` : '';
   clearTaskImage();
   const assignEl = document.getElementById('task-assign'); if (assignEl) assignEl.value = tk.assignedTo;
   document.getElementById('modal-task-title').textContent = '📋 แก้ไขงาน';
@@ -2126,15 +2207,13 @@ function viewTaskDetail(id) {
   if (tk.approvedAt) timeline.push({ cls:'approved', text:'อนุมัติแล้ว', sub:`โดย ${getUserName(tk.approvedBy)} · ${fmtDateTime(tk.approvedAt)}` });
   const beforeImgs = [tk.imageData, tk.imageData2, tk.imageData3].filter(isValidImage);
   const doneImgs = [tk.imageDone, tk.imageDone2, tk.imageDone3].filter(isValidImage);
-  const renderAttachment = (link) => {
-    if (!link || link.trim()==='') return '';
-    if (link.startsWith('data:') || link.startsWith('http')) {
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;margin-top:6px;">
-        <span style="font-size:1.8rem;">📎</span><div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:.88rem;">ไฟล์แนบ</div></div>
-        <a href="${link}" target="_blank" rel="noopener" download style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.8rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด/ดาวน์โหลด</a>
-      </div>`;
-    }
-    return '';
+  const attachments = parseAttachments(tk.link);
+  const renderAttachment = (files) => {
+    if (!files.length) return '';
+    return files.map(f => `<div class="file-chip" style="margin-top:6px;">
+        <span class="fc-icon">${_fileIcon(f.name||'file')}</span><span class="fc-name">${f.name||'ไฟล์แนบ'}</span>
+        <a href="${f.url}" target="_blank" rel="noopener" download style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด</a>
+      </div>`).join('');
   };
   const body = `
     <div class="detail-hero"><div class="detail-hero-title">${tk.title}</div>
@@ -2148,7 +2227,7 @@ function viewTaskDetail(id) {
       <div class="detail-row"><span class="detail-label">👤 สร้างโดย</span><span class="detail-value" style="display:flex;align-items:center;gap:8px;">${avatarHtml(tk.createdBy,24)}${getUserName(tk.createdBy)}</span></div>
       <div class="detail-row"><span class="detail-label">📅 วันที่เริ่ม</span><span class="detail-value">${fmtDate(tk.startDate)}${isValidTime(tk.startTime)?` · ${tk.startTime}`:''}</span></div>
       <div class="detail-row"><span class="detail-label">🏁 กำหนดส่ง</span><span class="detail-value">${fmtDate(tk.deadline)}${isValidTime(tk.endTime)?` · ${tk.endTime}`:''}</span></div>
-      ${tk.link && tk.link.trim() ? `<div class="detail-row"><span class="detail-label">📁 ไฟล์แนบ</span><span class="detail-value" style="flex:1">${renderAttachment(tk.link)}</span></div>` : ''}
+      ${attachments.length ? `<div class="detail-row"><span class="detail-label">📁 ไฟล์แนบ</span><span class="detail-value" style="flex:1;display:flex;flex-direction:column;gap:0;">${renderAttachment(attachments)}</span></div>` : ''}
     </div>
     ${tk.desc?`<div class="detail-section"><div class="detail-section-title">รายละเอียด</div><div class="detail-desc-box">${tk.desc}</div></div>`:''}
     ${beforeImgs.length?`<div class="detail-section"><div class="detail-section-title">📎 รูปก่อนเริ่มงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${beforeImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
@@ -2706,18 +2785,43 @@ async function previewDoneImage(input) {
   finally { hideLoading(); }
 }
 function clearDoneImage() { tempDoneImages=[]; const fi=document.getElementById('done-image-file'); if (fi) fi.value=''; const pc=document.getElementById('done-image-preview'); if (pc) { pc.style.display='none'; pc.innerHTML=''; } }
-let tempFileData = { name:'', base64:'' };
+let tempTaskFiles = [];
+function _fileIcon(name) {
+  const ext = (name.split('.').pop()||'').toLowerCase();
+  if (ext==='pdf') return '📕'; if (['doc','docx'].includes(ext)) return '📘'; if (['xls','xlsx','csv'].includes(ext)) return '📗';
+  if (['ppt','pptx'].includes(ext)) return '📙'; return '📄';
+}
+function _renderFileChips() {
+  const el = document.getElementById('file-upload-list'); if (!el) return;
+  el.innerHTML = tempTaskFiles.map((f,i) => `<div class="file-chip"><span class="fc-icon">${_fileIcon(f.name)}</span><span class="fc-name">${f.name}</span><button type="button" class="fc-remove" onclick="removeTaskFile(${i})">✕</button></div>`).join('');
+  document.getElementById('task-link').value = tempTaskFiles.length ? JSON.stringify(tempTaskFiles) : '';
+}
+function removeTaskFile(idx) { tempTaskFiles.splice(idx,1); _renderFileChips(); }
+async function uploadFileToStorage(file, folder) {
+  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,9)}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const { error } = await supabase.storage.from('task-images').upload(fileName, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('task-images').getPublicUrl(fileName);
+  return data.publicUrl;
+}
+function parseAttachments(link) {
+  if (!link || !link.trim()) return [];
+  try { const arr = JSON.parse(link); if (Array.isArray(arr)) return arr; } catch(e) {}
+  return [{ name: 'ไฟล์แนบ', url: link }]; // รองรับข้อมูลเก่าก่อน migrate (base64 เดี่ยว)
+}
 async function handleFileUpload(input) {
-  const file = input.files[0]; if (!file) return;
-  const statusEl = document.getElementById('file-upload-status'); statusEl.textContent='⏳ กำลังเตรียมไฟล์...'; statusEl.style.color='var(--warning)';
-  if (file.size > 5*1024*1024) { statusEl.textContent='❌ ไฟล์ใหญ่เกิน 5MB'; statusEl.style.color='var(--danger)'; input.value=''; return; }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try { tempFileData = { name:file.name, base64:e.target.result }; document.getElementById('task-link').value = e.target.result;
-      statusEl.innerHTML = `✅ แนบไฟล์: <strong>${file.name}</strong> (${(file.size/1024).toFixed(0)} KB)`; statusEl.style.color='var(--success)'; }
-    catch(err) { statusEl.textContent='❌ มีปัญหาในการแนบไฟล์'; statusEl.style.color='var(--danger)'; }
-  };
-  reader.readAsDataURL(file);
+  const files = Array.from(input.files || []); if (!files.length) return;
+  if (tempTaskFiles.length + files.length > 5) { toast('แนบไฟล์ได้สูงสุด 5 ไฟล์ต่องาน', 'warning'); input.value=''; return; }
+  const statusEl = document.getElementById('file-upload-status');
+  for (const file of files) {
+    if (file.size > 5*1024*1024) { toast(`ไฟล์ "${file.name}" ใหญ่เกิน 5MB ข้ามไป`, 'warning'); continue; }
+    statusEl.textContent = `⏳ กำลังอัปโหลด ${file.name}...`; statusEl.style.color = 'var(--warning)';
+    try { const url = await uploadFileToStorage(file, 'attachments'); tempTaskFiles.push({ name: file.name, url }); }
+    catch(e) { toast(`อัปโหลด "${file.name}" ไม่สำเร็จ: ${e.message}`, 'error'); }
+  }
+  statusEl.textContent = tempTaskFiles.length ? `✅ แนบไฟล์แล้ว ${tempTaskFiles.length} ไฟล์` : '';
+  statusEl.style.color = 'var(--success)';
+  _renderFileChips(); input.value = '';
 }
 function initPasteZones() { _setupPasteZone('paste-zone-done','done'); _setupPasteZone('paste-zone-task','task'); }
 function _setupPasteZone(zoneId, mode) {
@@ -2818,7 +2922,13 @@ function updateNotifBadge(shake=false) {
 }
 function markAllRead() { notifRead = notifData.map(n=>n.id); localStorage.setItem(_notifReadStorageKey(), JSON.stringify(notifRead)); updateNotifBadge(); renderNotifList(); }
 function clearAllNotif() { notifData=[]; notifRead=[]; notifBuilt=false; localStorage.setItem(_notifReadStorageKey(),'[]'); updateNotifBadge(); renderNotifList(); }
-function handleNotifClick(id) { if (!notifRead.includes(id)) { notifRead.push(id); localStorage.setItem(_notifReadStorageKey(), JSON.stringify(notifRead)); updateNotifBadge(); } const item = notifData.find(n=>n.id===id); if (item?.action) { item.action(); closeNotifPanel(); } }
+function handleNotifClick(id) {
+  if (!notifRead.includes(id)) { notifRead.push(id); localStorage.setItem(_notifReadStorageKey(), JSON.stringify(notifRead)); updateNotifBadge(); }
+  const item = notifData.find(n=>n.id===id);
+  closeNotifPanel(); closeModal('modal-urgent-alert');
+  if (item?.taskId) { navigate('tasks'); setTimeout(() => viewTaskDetail(item.taskId), 250); }
+  else if (item?.action) { item.action(); }
+}
 function renderNotifList() {
   const el = document.getElementById('notif-list'); if (!el) return; let list = [...notifData];
   if (notifTabCur==='urgent') list = list.filter(n=>n.urgent); if (notifTabCur==='tasks') list = list.filter(n=>n.type==='task'); if (notifTabCur==='system') list = list.filter(n=>n.type==='system');
@@ -2832,16 +2942,38 @@ function renderNotifList() {
 async function buildNotifications() {
   const items = []; const today = todayStr();
   try {
-    const dashRes = await callAPI('GET_DASHBOARD');
     const overdueMine = tasksCache.filter(tk => tk.deadline && tk.deadline<today && tk.status!=='done' && tk.status!=='cancelled' && tk.status!=='rejected' && tk.assignedTo===currentUser.id);
-    if (overdueMine.length) items.push({ id:'overdue_'+today, type:'task', urgent:true, icon:'🚨', iconBg:'#FEE2E2', title:`งานเกินกำหนด ${overdueMine.length} รายการ!`, sub:overdueMine.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today, count: overdueMine.length });
+    overdueMine.forEach(tk => { const diff = Math.floor((parseLocalDate(today)-parseLocalDate(tk.deadline))/86400000);
+      items.push({ id:'overdue_'+tk.id, taskId:tk.id, type:'task', urgent:true, icon:'🚨', iconBg:'#FEE2E2', title:`งานเกินกำหนด: ${tk.title}`, sub:`เลยกำหนดมาแล้ว ${diff} วัน — แตะเพื่อเปิดดูงานนี้`, time:today }); });
     const rejected = tasksCache.filter(tk => tk.status==='rejected' && tk.assignedTo===currentUser.id);
-    if (rejected.length) items.push({ id:'rejected_'+today, type:'task', urgent:true, icon:'↩️', iconBg:'#FEE2E2', title:`งานถูกตีกลับ ${rejected.length} รายการ`, sub:rejected.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today, count: rejected.length });
-    if (isManager()) { const pending = tasksCache.filter(tk => tk.status==='done' && !tk.approvedAt); if (pending.length) items.push({ id:'approval_'+today, type:'task', urgent:false, icon:'👍', iconBg:'#ECFDF5', title:`รออนุมัติ ${pending.length} งาน`, sub:pending.slice(0,3).map(t=>'• '+t.title).join('\n'), action:()=>navigate('tasks'), time:today, count: pending.length }); }
+    rejected.forEach(tk => { items.push({ id:'rejected_'+tk.id, taskId:tk.id, type:'task', urgent:true, icon:'↩️', iconBg:'#FEE2E2', title:`งานถูกตีกลับ: ${tk.title}`, sub:'แตะเพื่อดูเหตุผลและแก้ไข', time:today }); });
+    if (isManager()) {
+      const pending = tasksCache.filter(tk => tk.status==='done' && !tk.approvedAt);
+      pending.forEach(tk => { items.push({ id:'approval_'+tk.id, taskId:tk.id, type:'task', urgent:false, icon:'👍', iconBg:'#ECFDF5', title:`รออนุมัติ: ${tk.title}`, sub:`โดย ${getUserName(tk.assignedTo)} — แตะเพื่อตรวจสอบ`, time:today }); });
+    }
   } catch(e) { console.warn('buildNotifications:', e); }
-  notifData = items; notifBuilt = true;
-  const newUnread = items.filter(n => !notifRead.includes(n.id)).length;
+  items.sort((a,b) => (b.urgent?1:0)-(a.urgent?1:0));
+  notifData = items.slice(0,30); notifBuilt = true;
+  const newUnread = notifData.filter(n => !notifRead.includes(n.id)).length;
   updateNotifBadge(newUnread>0);
+  _fireBrowserNotifications(notifData);
+}
+function _fireBrowserNotifications(items) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const seenKey = `wf_notif_seen_${currentUser.id}`;
+  let seen = []; try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
+  const newUrgent = items.filter(n => n.urgent && !seen.includes(n.id));
+  newUrgent.slice(0,3).forEach(n => {
+    try { const notif = new Notification(n.title, { body: n.sub, icon: 'icon.svg', tag: n.id });
+      notif.onclick = () => { window.focus(); handleNotifClick(n.id); notif.close(); }; } catch(e) {}
+  });
+  if (newUrgent.length) localStorage.setItem(seenKey, JSON.stringify([...seen, ...newUrgent.map(n=>n.id)].slice(-200)));
+}
+async function requestBrowserNotifPermission() {
+  if (typeof Notification === 'undefined') return toast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนแบบระบบ', 'warning');
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') toast('เปิดการแจ้งเตือนผ่านเบราว์เซอร์แล้ว ✅', 'success');
+  else toast('ยังไม่ได้เปิดสิทธิ์การแจ้งเตือน ลองใหม่ได้ในตั้งค่าเบราว์เซอร์', 'warning');
 }
 
 /* ══════════════════ URGENT ALERT POPUP (เด้งกลางจอตอน login / เปิดแอปครั้งแรก) ══════════════════ */
@@ -2854,9 +2986,9 @@ async function showUrgentAlertPopup() {
     body.innerHTML = `
       <div class="urgent-alert-icon">⚠️</div>
       <div style="text-align:center;font-weight:700;font-size:1.02rem;margin-bottom:14px;">มีเรื่องด่วนที่ต้องจัดการ ${urgentItems.length} เรื่อง</div>
-      ${urgentItems.map(n => `
-        <div class="urgent-alert-item" onclick="closeModal('modal-urgent-alert');navigate('tasks');">
-          <div class="urgent-alert-count">${n.count || ''}</div>
+      ${urgentItems.slice(0,8).map(n => `
+        <div class="urgent-alert-item" onclick="handleNotifClick('${n.id}')">
+          <div class="urgent-alert-count">${n.icon}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:.88rem;color:var(--danger);">${n.title}</div>
             <div style="font-size:.76rem;color:var(--text-sub);white-space:pre-line;margin-top:2px;">${n.sub}</div>
