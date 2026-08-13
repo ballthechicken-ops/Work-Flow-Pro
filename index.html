@@ -2947,6 +2947,9 @@ async function buildNotifications() {
       items.push({ id:'overdue_'+tk.id, taskId:tk.id, type:'task', urgent:true, icon:'🚨', iconBg:'#FEE2E2', title:`งานเกินกำหนด: ${tk.title}`, sub:`เลยกำหนดมาแล้ว ${diff} วัน — แตะเพื่อเปิดดูงานนี้`, time:today }); });
     const rejected = tasksCache.filter(tk => tk.status==='rejected' && tk.assignedTo===currentUser.id);
     rejected.forEach(tk => { items.push({ id:'rejected_'+tk.id, taskId:tk.id, type:'task', urgent:true, icon:'↩️', iconBg:'#FEE2E2', title:`งานถูกตีกลับ: ${tk.title}`, sub:'แตะเพื่อดูเหตุผลและแก้ไข', time:today }); });
+    const twoDaysAgo = new Date(Date.now() - 2*86400000);
+    const newlyAssigned = tasksCache.filter(tk => tk.assignedTo===currentUser.id && tk.source==='assigned' && tk.createdBy!==currentUser.id && tk.status==='pending' && tk.updatedAt && new Date(tk.updatedAt) >= twoDaysAgo);
+    newlyAssigned.forEach(tk => { items.push({ id:'assigned_'+tk.id, taskId:tk.id, type:'task', urgent:false, icon:'📥', iconBg:'#EFF6FF', title:`งานใหม่ที่ได้รับมอบหมาย: ${tk.title}`, sub:`มอบหมายโดย ${getUserName(tk.createdBy)}${tk.deadline?` — กำหนดส่ง ${fmtDate(tk.deadline)}`:''}`, time:today }); });
     if (isManager()) {
       const pending = tasksCache.filter(tk => tk.status==='done' && !tk.approvedAt);
       pending.forEach(tk => { items.push({ id:'approval_'+tk.id, taskId:tk.id, type:'task', urgent:false, icon:'👍', iconBg:'#ECFDF5', title:`รออนุมัติ: ${tk.title}`, sub:`โดย ${getUserName(tk.assignedTo)} — แตะเพื่อตรวจสอบ`, time:today }); });
