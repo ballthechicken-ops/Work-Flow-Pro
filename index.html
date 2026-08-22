@@ -745,7 +745,7 @@ function mapUser(r, extra = {}) {
     id: r.id, username: r.username, fullName: r.full_name, position: r.position || '',
     department: r.department || '', role: r.role, managerId: r.manager_id, managerIds: extra.managerIds || (r.manager_id ? [r.manager_id] : []),
     phone: r.phone || '', points: r.points || 0, lang: r.language_pref || 'th',
-    avatar: r.avatar || '', ...extra
+    avatar: r.avatar || '', isActive: r.is_active !== false, ...extra
   };
 }
 function hasManager(u, mgrId) { return Array.isArray(u.managerIds) && u.managerIds.includes(mgrId); }
@@ -771,6 +771,10 @@ async function _dispatchAPI(action, payload) {
       if (error) return { success:false, error: currentLang==='th' ? 'Username หรือ Password ไม่ถูกต้อง' : 'Invalid username or password' };
       const { data: profile, error: perr } = await supabase.from('users').select('*').eq('id', data.user.id).single();
       if (perr || !profile) return { success:false, error:'User profile not found' };
+      if (profile.is_active === false) {
+        await supabase.auth.signOut();
+        return { success:false, error: currentLang==='th' ? 'บัญชีนี้ถูกปิดใช้งานแล้ว กรุณาติดต่อ Admin' : 'This account has been deactivated. Please contact Admin.' };
+      }
       const { data: subs } = await supabase.from('user_managers').select('user_id').eq('manager_id', data.user.id).limit(1);
       const { data: myMgrs } = await supabase.from('user_managers').select('manager_id').eq('user_id', data.user.id);
       return { success:true, user: mapUser(profile, { hasSubordinates: !!(subs && subs.length), managerIds: (myMgrs||[]).map(r=>r.manager_id) }) };
@@ -865,6 +869,7 @@ async function _dispatchAPI(action, payload) {
       if (rest.department !== undefined) upd.department = rest.department;
       if (rest.role !== undefined) upd.role = rest.role;
       if (rest.phone !== undefined) upd.phone = rest.phone;
+      if (rest.isActive !== undefined) upd.is_active = rest.isActive;
       const { error } = await supabase.from('users').update(upd).eq('id', id);
       if (error) throw error;
       if (rest.managerIds !== undefined) {
@@ -874,7 +879,7 @@ async function _dispatchAPI(action, payload) {
       return { success:true };
     }
     case 'DELETE_USER': {
-      return { success:false, error: currentLang==='th' ? 'การลบผู้ใช้ต้องทำผ่าน Supabase Dashboard (Authentication > Users) แล้วลบแถวใน Table Editor > users ตามด้วย' : 'Deleting users must be done via the Supabase Dashboard' };
+      return { success:false, error: currentLang==='th' ? 'ไม่รองรับการลบผู้ใช้ถาวร (ป้องกันข้อมูลงานเก่าเสียหาย) กรุณาใช้ปุ่ม "ปิดใช้งาน" แทน' : 'Permanent deletion is not supported. Please use "Deactivate" instead.' };
     }
     case 'GET_ORG': {
       const { data, error } = await supabase.from('users').select('*'); if (error) throw error;
@@ -1499,7 +1504,7 @@ function buildPagesHTML() {
       ${isAdminUser ? `<label class="btn btn-secondary" style="cursor:pointer;">📎 แนบรูปผังองค์กร<input type="file" accept="image/*" style="display:none" onchange="handleOrgImageUpload(this)" /></label>` : ''}
     </div>
     <div class="card" id="org-image-card" style="display:none"><div class="card-header">🖼️ ผังองค์กร (รูปภาพ)${isAdminUser?` <button class="btn btn-danger btn-sm" onclick="removeOrgImage()">🗑 ลบรูป</button>`:''}</div>
-      <div class="card-body" style="text-align:center;"><img id="org-image-preview" src="" style="max-width:100%;border-radius:10px;cursor:pointer;" onclick="openLightbox(this.src)" /></div>
+      <div class="card-body" style="text-align:center;"><img id="org-image-preview" src="" style="width:100%;max-width:900px;height:auto;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.08);" onclick="openLightbox(this.src)" title="คลิกเพื่อดูขนาดเต็ม" /></div>
     </div>
     <div class="card"><div class="card-header">🌳 โครงสร้างแบบต้นไม้ (สร้างอัตโนมัติจากข้อมูลหัวหน้า-ลูกทีม)</div><div class="card-body" id="org-chart-body"><div class="empty-state"><p>Loading...</p></div></div></div>
   </div>
@@ -1574,11 +1579,12 @@ function populateDropdowns() {
   const assignEl = document.getElementById('task-assign');
   if (assignEl) {
     let assignable = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || hasManager(u, currentUser.id)) : usersCache.filter(u => u.id === currentUser.id));
+    assignable = assignable.filter(u => u.isActive !== false || u.id === currentUser.id);
     assignEl.innerHTML = assignable.map(u => `<option value="${u.id}">${u.fullName}${u.position ? ' ('+u.position+')' : ''}</option>`).join('');
   }
   const mgrListEl = document.getElementById('user-manager-list');
   if (mgrListEl) {
-    const candidates = usersCache.filter(u => u.role === 'Manager' || u.role === 'Admin');
+    const candidates = usersCache.filter(u => (u.role === 'Manager' || u.role === 'Admin') && u.isActive !== false);
     mgrListEl.innerHTML = candidates.length ? candidates.map(u => `
       <label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:.86rem;cursor:pointer;">
         <input type="checkbox" class="user-manager-checkbox" value="${u.id}" style="width:16px;height:16px;flex-shrink:0;" />
@@ -1587,7 +1593,7 @@ function populateDropdowns() {
   }
   const deductUserEl = document.getElementById('deduct-user-select');
   if (deductUserEl) {
-    let deductable = isAdmin() ? usersCache : usersCache.filter(u => hasManager(u, currentUser.id));
+    let deductable = (isAdmin() ? usersCache : usersCache.filter(u => hasManager(u, currentUser.id))).filter(u => u.isActive !== false);
     deductUserEl.innerHTML = `<option value="">— เลือกพนักงาน —</option>` + deductable.map(u => `<option value="${u.id}" data-points="${u.points||0}">${u.fullName} (${u.points||0} pts)</option>`).join('');
   }
   const filterUserEl = document.getElementById('deduct-filter-user');
@@ -2212,7 +2218,7 @@ function viewTaskDetail(id) {
     if (!files.length) return '';
     return files.map(f => `<div class="file-chip" style="margin-top:6px;">
         <span class="fc-icon">${_fileIcon(f.name||'file')}</span><span class="fc-name">${f.name||'ไฟล์แนบ'}</span>
-        <a href="${f.url}" target="_blank" rel="noopener" download style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด</a>
+        <a href="${f.url}" target="_blank" rel="noopener" download="${f.name||''}" style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด</a>
       </div>`).join('');
   };
   const body = `
@@ -2484,7 +2490,7 @@ function resetSalary() { ['sal-base','sal-ot10','sal-ot15','sal-ot20','sal-ot30'
 /* ══════════════════ USERS ══════════════════ */
 async function loadUsers() { try { const res = await callAPI('GET_USERS'); usersCache = res.data || []; renderUsersTable(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
 function renderUsersTable() {
-  document.getElementById('users-table-body').innerHTML = usersCache.map((u,i) => `<tr><td>${i+1}</td><td><div style="display:flex;align-items:center;gap:9px;">${avatarHtml(u.id,30)}<strong>${u.fullName}</strong></div></td>
+  document.getElementById('users-table-body').innerHTML = usersCache.map((u,i) => `<tr style="${u.isActive===false?'opacity:.55':''}"><td>${i+1}</td><td><div style="display:flex;align-items:center;gap:9px;">${avatarHtml(u.id,30)}<strong>${u.fullName}</strong>${u.isActive===false?'<span class="badge badge-cancel">ปิดใช้งาน</span>':''}</div></td>
     <td><code style="background:var(--bg);padding:2px 7px;border-radius:5px;font-size:.82rem">${u.username||'-'}</code></td>
     <td>${u.position||'—'}</td><td>${u.department||'—'}</td>
     <td><span class="badge ${u.role==='Admin'?'badge-navy':(u.role==='Manager'?'badge-orange':'badge-green')}">${u.role==='Manager'?t('role.manager'):u.role}</span></td>
@@ -2492,8 +2498,18 @@ function renderUsersTable() {
     <td><div style="display:flex;gap:6px">
       <button class="btn btn-secondary btn-sm" onclick="editUser('${u.id}')">✏️</button>
       <button class="btn btn-warning btn-sm" onclick="openDeductModal('${u.id}')">⚠️</button>
-      ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">🗑</button>` : ''}
+      ${u.id !== currentUser.id ? (u.isActive===false
+        ? `<button class="btn btn-success btn-sm" onclick="toggleUserActive('${u.id}', true)" title="เปิดใช้งานอีกครั้ง">✅</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="toggleUserActive('${u.id}', false)" title="ปิดใช้งาน (ประวัติงานเก่ายังอยู่ครบ)">🚫</button>`) : ''}
     </div></td></tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text-sub);padding:24px">ไม่มีผู้ใช้</td></tr>`;
+}
+async function toggleUserActive(id, activate) {
+  const u = usersCache.find(x => x.id == id); if (!u) return;
+  const msg = activate ? `เปิดใช้งานบัญชี "${u.fullName}" อีกครั้ง?` : `ปิดใช้งานบัญชี "${u.fullName}"?\n\nพนักงานคนนี้จะ Login เข้าระบบไม่ได้อีก และจะไม่ปรากฏในรายชื่อตอนมอบหมายงานใหม่ แต่ประวัติงานเก่าทั้งหมดยังอยู่ครบ ตรวจสอบย้อนหลังได้ปกติ (ไม่ใช่การลบถาวร เปิดกลับมาใช้งานได้ทีหลัง)`;
+  if (!confirm(msg)) return;
+  showLoading();
+  try { await callAPI('UPDATE_USER', { id, isActive: activate }); toast(activate?'เปิดใช้งานแล้ว ✅':'ปิดใช้งานแล้ว', 'success'); await loadUsers(); }
+  catch(e) { toast(e.message,'error'); } finally { hideLoading(); }
 }
 function openNewUserModal() {
   ['user-edit-id','user-fullname','user-username','user-position','user-phone','user-password'].forEach(id => { const el=document.getElementById(id); if (el) el.value=''; });
@@ -2798,7 +2814,9 @@ function _renderFileChips() {
 }
 function removeTaskFile(idx) { tempTaskFiles.splice(idx,1); _renderFileChips(); }
 async function uploadFileToStorage(file, folder) {
-  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,9)}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const extMatch = file.name.match(/\.([a-zA-Z0-9]{1,8})$/);
+  const ext = extMatch ? extMatch[1].toLowerCase() : 'dat';
+  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,9)}.${ext}`;
   const { error } = await supabase.storage.from('task-images').upload(fileName, file, { contentType: file.type || 'application/octet-stream', upsert: false });
   if (error) throw error;
   const { data } = supabase.storage.from('task-images').getPublicUrl(fileName);
