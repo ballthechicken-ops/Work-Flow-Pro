@@ -729,7 +729,7 @@ const isManager = () => currentUser && (currentUser.role === 'Admin' || currentU
 /* ══════════════════ MAPPERS (snake_case DB -> camelCase ที่ UI เดิมใช้) ══════════════════ */
 function mapTask(r) {
   return {
-    id: r.id, title: r.title, desc: r.description || '', category: r.category,
+    id: r.id, taskCode: r.task_code || '', title: r.title, desc: r.description || '', category: r.category,
     priority: r.priority, points: r.points, assignedTo: r.assigned_to,
     createdBy: r.created_by, startDate: r.start_date || '', startTime: r.start_time || '',
     deadline: r.deadline || '', endTime: r.end_time || '', status: r.status, source: r.source,
@@ -1949,7 +1949,7 @@ function renderTaskList() {
         <div class="task-card-priority" style="background:${priorityColor(tk.priority)}"></div>
         ${avatarHtml(tk.assignedTo, 36)}
         <div class="task-card-body">
-          <div class="task-card-title">${tk.title}
+          <div class="task-card-title">${tk.taskCode ? `<span style="font-family:monospace;font-size:.76rem;color:var(--text-sub);background:var(--bg);padding:2px 7px;border-radius:5px;margin-right:6px;">${tk.taskCode}</span>` : ''}${tk.title}
             ${tk.priority==='Critical'?'<span class="badge badge-critical">⚠️ Critical</span>':''}
             ${tk.source==='self'?`<span class="badge badge-orange">${t('source.self')}</span>`:''}
             ${tk.approvedAt?'<span class="badge badge-green">✅ Approved</span>':''}
@@ -2222,7 +2222,7 @@ function viewTaskDetail(id) {
       </div>`).join('');
   };
   const body = `
-    <div class="detail-hero"><div class="detail-hero-title">${tk.title}</div>
+    <div class="detail-hero"><div class="detail-hero-title">${tk.taskCode ? `<div style="font-family:monospace;font-size:.8rem;opacity:.75;margin-bottom:4px;">${tk.taskCode}</div>` : ''}${tk.title}</div>
       <div class="detail-hero-badges"><span class="detail-hero-badge" style="background:${prio.color}88">${prio.label}</span><span class="detail-hero-badge">${statusLabel(tk.status)}</span><span class="detail-hero-badge">⭐ ${tk.points} pt</span>
       ${tk.source==='self'?`<span class="detail-hero-badge">✍️ บันทึกเอง</span>`:`<span class="detail-hero-badge">📋 มอบหมาย</span>`}</div>
       ${tk.status!=='cancelled'?`<div class="detail-progress-wrap"><div class="detail-progress-label"><span>ความคืบหน้า</span><span>${daysInfo||(tk.status==='done'?'✅':'')}</span></div></div>`:''}
