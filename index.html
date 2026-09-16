@@ -789,7 +789,9 @@ async function _dispatchAPI(action, payload) {
       return { success:true, data: mapUser(profile, { monthlyPoints }) };
     }
     case 'GET_TASKS': {
-      const { data, error } = await supabase.from('tasks').select('*').order('deadline', { ascending:true, nullsFirst:false }).order('id', { ascending:false });
+      const { data, error } = await supabase.from('tasks')
+        .select('id, task_code, title, description, category, priority, points, assigned_to, created_by, start_date, start_time, deadline, end_time, status, source, completed_at, approved_by, approved_at, link_attachment, updated_at')
+        .order('deadline', { ascending:true, nullsFirst:false }).order('id', { ascending:false });
       if (error) throw error;
       return { success:true, data: (data||[]).map(mapTask) };
     }
@@ -960,7 +962,9 @@ async function _dispatchAPI(action, payload) {
       return { success:true, data:(data||[]).map(d => ({ id:d.id, ts:d.ts, adminId:d.admin_id, adminName:nameMap[d.admin_id]||d.admin_id, userId:d.user_id, userName:nameMap[d.user_id]||d.user_id, points:d.points_deducted, actual:d.actual_deducted, reason:d.reason, category:d.category, before:d.before_points, after:d.after_points })) };
     }
     case 'GET_DASHBOARD': {
-      const { data: taskRows, error } = await supabase.from('tasks').select('*'); if (error) throw error;
+      const { data: taskRows, error } = await supabase.from('tasks')
+          .select('id, title, category, priority, points, assigned_to, created_by, deadline, start_date, status, source, completed_at');
+        if (error) throw error;
       const allTasksMapped = (taskRows||[]).map(mapTask);
       const allTasks = allTasksMapped;
       const today = todayStr();
@@ -1022,9 +1026,20 @@ async function _dispatchAPI(action, payload) {
       delete dash.allTasks;
       return { success:true, dashboard: dash, tasks };
     }
+    case 'GET_TASK_IMAGES': {
+      const { data, error } = await supabase.from('tasks')
+        .select('image_data, image_data2, image_data3, image_done, image_done2, image_done3')
+        .eq('id', payload.id).single();
+      if (error) throw error;
+      return { success:true, data };
+    }
     case 'EXPORT_REPORT': {
       const { dateFrom, dateTo } = payload;
-      const { data: taskRows, error } = await supabase.from('tasks').select('*'); if (error) throw error;
+      const { data: taskRows, error } = await supabase.from('tasks')
+        .select('id, title, category, priority, status, source, assigned_to, created_by, start_date, start_time, deadline, end_time, points, completed_at, approved_by, approved_at')
+        .or(`deadline.gte.${dateFrom},start_date.gte.${dateFrom}`)
+        .lte('deadline', dateTo);
+      if (error) throw error;
       const { data: userRows } = await supabase.from('users').select('id, full_name');
       const userMap = {}; (userRows||[]).forEach(u => userMap[u.id] = u.full_name);
       const tasks = (taskRows||[]).filter(t => {
@@ -2194,8 +2209,15 @@ async function confirmRejectTask() {
     toast('↩️ ตีกลับงานเรียบร้อย', 'info'); closeModal('modal-reject'); closeModal('modal-task-detail'); await refreshCurrentPage();
   } catch(e) { toast(e.message, 'error'); } finally { hideLoading(); }
 }
-function viewTaskDetail(id) {
+async function viewTaskDetail(id) {
   const tk = tasksCache.find(x => x.id == id); if (!tk) return toast('ไม่พบข้อมูลงาน', 'error');
+  try {
+    const imgRes = await callAPI('GET_TASK_IMAGES', { id });
+    Object.assign(tk, {
+      imageData: imgRes.data.image_data || '', imageData2: imgRes.data.image_data2 || '', imageData3: imgRes.data.image_data3 || '',
+      imageDone: imgRes.data.image_done || '', imageDone2: imgRes.data.image_done2 || '', imageDone3: imgRes.data.image_done3 || '',
+    });
+  } catch(e) { /* ไม่มีรูปก็ไม่เป็นไร แสดงต่อได้ */ }
   const isManagerUser = isManager();
   const priorityMap = { Low:{label:'ต่ำ',color:'#10B981'}, Medium:{label:'กลาง',color:'#3B82F6'}, High:{label:'สูง',color:'#F59E0B'}, Critical:{label:'วิกฤต',color:'#EF4444'} };
   const prio = priorityMap[tk.priority] || { label:tk.priority, color:'#94A3B8' };
