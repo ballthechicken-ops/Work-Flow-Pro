@@ -789,9 +789,10 @@ async function _dispatchAPI(action, payload) {
       return { success:true, data: mapUser(profile, { monthlyPoints }) };
     }
     case 'GET_TASKS': {
-      const { data, error } = await supabase.from('tasks')
-        .select('id, task_code, title, description, category, priority, points, assigned_to, created_by, start_date, start_time, deadline, end_time, status, source, completed_at, approved_by, approved_at, link_attachment, updated_at')
-        .order('deadline', { ascending:true, nullsFirst:false }).order('id', { ascending:false });
+  const { data, error } = await supabase.from('tasks')
+    .select('id, task_code, title, description, category, priority, points, assigned_to, created_by, start_date, start_time, deadline, end_time, status, source, completed_at, approved_by, approved_at, updated_at')
+    // ตัด link_attachment ออก
+    .order('deadline', { ascending:true, nullsFirst:false }).order('id', { ascending:false });
       if (error) throw error;
       return { success:true, data: (data||[]).map(mapTask) };
     }
@@ -1032,6 +1033,11 @@ async function _dispatchAPI(action, payload) {
         .eq('id', payload.id).single();
       if (error) throw error;
       return { success:true, data };
+    }
+    case 'GET_TASK_ATTACHMENTS': {
+      const { data, error } = await supabase.from('tasks').select('link_attachment').eq('id', payload.id).single();
+      if (error) throw error;
+      return { success:true, data: data.link_attachment };
     }
     case 'EXPORT_REPORT': {
       const { dateFrom, dateTo } = payload;
@@ -2277,6 +2283,10 @@ async function viewTaskDetail(id) {
       imageDone: imgRes.data.image_done || '', imageDone2: imgRes.data.image_done2 || '', imageDone3: imgRes.data.image_done3 || '',
     });
   } catch(e) { /* ไม่มีรูปก็ไม่เป็นไร แสดงต่อได้ */ }
+  try {
+    const attRes = await callAPI('GET_TASK_ATTACHMENTS', { id });
+    tk.link = attRes.data || '';
+  } catch(e) { console.warn('load attachments failed:', e); }
   const isManagerUser = isManager();
   const priorityMap = { Low:{label:'ต่ำ',color:'#10B981'}, Medium:{label:'กลาง',color:'#3B82F6'}, High:{label:'สูง',color:'#F59E0B'}, Critical:{label:'วิกฤต',color:'#EF4444'} };
   const prio = priorityMap[tk.priority] || { label:tk.priority, color:'#94A3B8' };
