@@ -2972,7 +2972,20 @@ async function generateTaskPDF() {
   tasks.sort((a,b) => { const da=a.deadline||a.startDate||'9999', db=b.deadline||b.startDate||'9999'; if (da!==db) return da.localeCompare(db); return (a.startDate||'').localeCompare(b.startDate||''); });
   if (!tasks.length) return toast('ไม่มีงานในช่วงวันที่ที่เลือก', 'warning');
   showLoading(); closeModal('modal-pdf-export');
-  try { await _buildPDF(tasks, dateFrom, dateTo); toast('📄 สร้าง PDF เรียบร้อย', 'success'); }
+  try {
+    // ดึงรูปภาพของงานที่อยู่ในรายงานเพิ่ม เพราะ tasksCache ไม่มีรูปแล้ว (ตัดออกตอนแก้ Egress)
+    for (const tk of tasks) {
+      try {
+        const imgRes = await callAPI('GET_TASK_IMAGES', { id: tk.id });
+        Object.assign(tk, {
+          imageData: imgRes.data.image_data || '', imageData2: imgRes.data.image_data2 || '', imageData3: imgRes.data.image_data3 || '',
+          imageDone: imgRes.data.image_done || '', imageDone2: imgRes.data.image_done2 || '', imageDone3: imgRes.data.image_done3 || '',
+        });
+      } catch(e) { /* งานไหนดึงรูปไม่ได้ก็ข้ามไป ไม่ให้รายงานล้ม */ }
+    }
+    await _buildPDF(tasks, dateFrom, dateTo);
+    toast('📄 สร้าง PDF เรียบร้อย', 'success');
+  }
   catch(e) { toast('เกิดข้อผิดพลาดในการสร้าง PDF: '+e.message, 'error'); } finally { hideLoading(); }
 }
 async function _buildPDF(tasks, dateFrom, dateTo) {
