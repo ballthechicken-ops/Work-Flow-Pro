@@ -348,6 +348,13 @@
     .file-chip .fc-name { flex:1; min-width:0; font-size:.83rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .file-chip .fc-remove { flex-shrink:0; background:none; border:none; color:var(--danger); font-size:1rem; cursor:pointer; padding:2px 6px; }
     .paste-zone:hover, .paste-zone.drag-over { border-color: var(--secondary); background: #EFF6FF; color: var(--primary); }
+    .help-btn { font-weight:800; font-size:1.05rem; color:var(--primary); }
+    .help-btn:hover { background:var(--primary); color:#fff; }
+    .help-sec { margin-bottom:16px; }
+    .help-sec h4 { font-size:.92rem; color:var(--primary); margin-bottom:6px; }
+    .help-sec p, .help-sec li { font-size:.86rem; line-height:1.7; color:var(--text-main); }
+    .help-sec ul { list-style:disc; padding-left:20px; }
+    .help-tip { background:#ECFDF5; border:1px solid #6EE7B7; border-radius:10px; padding:10px 14px; font-size:.82rem; color:#065F46; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -406,6 +413,7 @@
     <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
     <div class="topbar-title" id="topbar-title">แดชบอร์ด</div>
     <div class="topbar-actions">
+      <button class="topbar-btn help-btn" onclick="openPageHelp()" title="คำอธิบายหน้านี้" aria-label="Help">?</button>
       <div class="lang-switch"><button onclick="setLang('th',this)" class="active">TH</button><button onclick="setLang('en',this)">EN</button></div>
       <button class="topbar-btn" id="notif-bell-btn" onclick="showNotifications()" style="position:relative" title="การแจ้งเตือน">🔔</button>
     </div>
@@ -511,7 +519,13 @@
     <div class="modal-footer"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="closeModal('modal-urgent-alert')">รับทราบ</button></div>
   </div>
 </div>
-
+<div class="modal-overlay modal-center" id="modal-page-help">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><div class="modal-title">❓ <span id="page-help-title">คำอธิบายหน้านี้</span></div><button class="modal-close" onclick="closeModal('modal-page-help')">✕</button></div>
+    <div class="modal-body" id="page-help-body"></div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('modal-page-help')">เข้าใจแล้ว</button></div>
+  </div>
+</div>
 <canvas id="confetti-canvas" style="display:none;position:fixed;inset:0;z-index:9998;pointer-events:none;width:100vw;height:100vh;"></canvas>
 <div class="modal-overlay modal-center" id="modal-celebrate" style="z-index:9999;">
   <div class="modal" style="max-width:380px;text-align:center;">
@@ -3178,7 +3192,130 @@ function _checkRewardCelebration(reward) {
     showCelebration('บรรลุเป้าหมายแล้ว! 🎉', `คุณทำคะแนนถึงเป้าของรางวัล "${reward.name}" แล้ว!`, '🏆');
   }
 }
-
+/* ══════════════════ PAGE HELP (คำอธิบายแยกแต่ละหน้า) ══════════════════ */
+const PAGE_HELP = {
+  dashboard: {
+    intro: 'ภาพรวมงานและคะแนนของคุณในหน้าเดียว',
+    items: [
+      'การ์ดด้านบนสรุปจำนวนงานทั้งหมด / เสร็จสิ้น / เกินกำหนด / ยกเลิก',
+      'กราฟวงกลมแสดงสัดส่วนสถานะงาน',
+      '"งานใกล้ครบกำหนด" แสดงงานที่ครบภายใน 7 วันข้างหน้า',
+      '"อัตราส่งงานตรงเวลา" คำนวณจากงานมอบหมายที่เสร็จแล้วและมีกำหนดส่ง',
+      '"ระดับขั้นพนักงาน (EXP)" แสดงแรงค์ตามคะแนนสะสม เมื่อเลื่อนขั้นจะมีพลุฉลอง 🎉',
+      'แท็บ แนวโน้มรายเดือน / ตามประเภทงาน แสดงกราฟเพิ่มเติม',
+      'หัวหน้าทีมและ Admin เลือกดูข้อมูลทั้งทีม รายแผนก หรือรายบุคคลได้ และมีแท็บ "เทียบพนักงาน"'
+    ],
+    tip: 'กดปุ่ม "➕ สร้างงานใหม่" มุมขวาบนของหน้าได้เลย'
+  },
+  tasks: {
+    intro: 'หน้าสำหรับสั่งงาน บันทึกงาน และติดตามสถานะงานทั้งหมด',
+    items: [
+      '➕ สร้างงาน: ใส่ชื่องาน ประเภท ความเร่งด่วน กำหนดส่ง แนบไฟล์ (สูงสุด 5 ไฟล์ ไฟล์ละไม่เกิน 5MB) และรูป (สูงสุด 3 รูป)',
+      'งานมอบหมาย = หัวหน้าสั่งให้ลูกทีม ส่วนงานบันทึกเอง = พนักงานบันทึกงานที่ทำเอง',
+      'กด ✅ เมื่องานเสร็จ แนบรูปหลักฐานแล้วส่งงาน จากนั้นหัวหน้ากด 👍 อนุมัติ หรือ ↩️ ตีกลับให้แก้ไข',
+      'กด 👁 ดูรายละเอียด ✏️ แก้ไข 📋 คัดลอกงาน ❌ ยกเลิก (หัวหน้า) 🗑 ลบ (Admin)',
+      'ใช้ช่องค้นหา ปุ่มกรองสถานะ และ "ตัวกรองเพิ่มเติม" เพื่อหางานเฉพาะที่ต้องการ',
+      'ปุ่ม 📄 ส่งออกรายงานงานเป็น PDF (ตามช่วงวันที่ พนักงาน สถานะ)'
+    ],
+    tip: 'งานมอบหมายที่ส่งช้าจะถูกหักคะแนนอัตโนมัติ วันละ 5% สูงสุด 50% ส่วนงานบันทึกเองหัวหน้าเป็นผู้ให้คะแนน (สูงสุด 30 ต่องาน)'
+  },
+  calendar: {
+    intro: 'ปฏิทินแสดงวันกำหนดส่งของงาน',
+    items: [
+      'จุดสีแดง = เกินกำหนด, สีเทา = รอดำเนินการ, สีเขียว = เสร็จสิ้น',
+      'ใต้วันที่จะบอกจำนวนงานที่ครบกำหนดในวันนั้น',
+      'แตะที่วันที่เพื่อดูรายชื่องาน แล้วแตะที่งานเพื่อเปิดรายละเอียด',
+      'ใช้ปุ่ม ◀ ▶ เปลี่ยนเดือน'
+    ],
+    tip: 'ปฏิทินนี้แสดงเฉพาะกำหนดส่งของงานที่มีอยู่แล้ว ไม่มีการเพิ่มกิจกรรมแยกต่างหาก'
+  },
+  kpi: {
+    intro: 'หน้านี้แยกออกเป็น 3 ส่วนชัดเจน',
+    items: [
+      '🥇 แรงค์สะสม: คะแนนรวมตลอดชีพ ไม่รีเซ็ต',
+      '📅 KPI ประจำเดือน: คะแนนเฉพาะเดือนนี้ รีเซ็ตทุกต้นเดือน แต่คะแนนที่ได้ยังอยู่ในแรงค์สะสม',
+      '🎁 รางวัลตามรอบ: หัวหน้าตั้งเป้าคะแนนและช่วงเวลาเอง พนักงานสะสมเฉพาะช่วงนั้น จนกว่าหัวหน้ากด "ตัดรอบ"',
+      '📊 Leaderboard: จัดอันดับคะแนน (เฉพาะหัวหน้า/Admin) และเลือก "ซ่อนชื่อจริง" ได้'
+    ],
+    tip: 'ถึงเป้าหมายรางวัลเมื่อไร ระบบจะแสดงพลุฉลองให้อัตโนมัติ'
+  },
+  salary: {
+    intro: 'เครื่องคิดเงินเดือนและ OT สำหรับประมาณการรายได้',
+    items: [
+      'กรอกเงินเดือนฐาน ชั่วโมง OT (1.0x / 1.5x / 2.0x / 3.0x) และรายได้อื่นๆ',
+      'กรอกรายการหัก เช่น ประกันสังคม กองทุน ภาษี',
+      'ค่าแรงต่อชั่วโมงคำนวณจาก เงินเดือน ÷ 26 วัน ÷ 8 ชั่วโมง',
+      'ผลลัพธ์เงินสุทธิแสดงทางขวาแบบเรียลไทม์ ปุ่ม "ล้างข้อมูล" เพื่อเริ่มใหม่'
+    ],
+    tip: '🔒 คำนวณบนเบราว์เซอร์เท่านั้น ไม่มีการบันทึกข้อมูลใดๆ ขึ้นระบบ'
+  },
+  users: {
+    intro: 'จัดการบัญชีผู้ใช้ทั้งหมด (เฉพาะ Admin)',
+    items: [
+      '➕ เพิ่มผู้ใช้: ตั้ง Username รหัสผ่านเริ่มต้น (อย่างน้อย 6 ตัว) สิทธิ์ แผนก และหัวหน้างาน (เลือกได้หลายคน)',
+      '✏️ แก้ไขข้อมูลผู้ใช้ ⚠️ ตัดคะแนน',
+      '🚫 ปิดใช้งาน: ผู้ใช้จะ Login ไม่ได้ แต่ประวัติงานเก่ายังอยู่ครบ กด ✅ เพื่อเปิดกลับได้',
+      'สิทธิ์: User (พนักงาน) / Manager (หัวหน้าทีม) / Admin (ผู้ดูแลระบบ)'
+    ],
+    tip: 'การรีเซ็ตรหัสผ่านของผู้ใช้อื่น ทำได้ที่ Supabase Dashboard > Authentication > Users เท่านั้น'
+  },
+  org: {
+    intro: 'โครงสร้างองค์กรแบบต้นไม้ แสดงสายหัวหน้า-ลูกทีม',
+    items: [
+      'สร้างอัตโนมัติจากข้อมูล "หัวหน้างาน" ที่ตั้งไว้ในหน้าจัดการผู้ใช้',
+      'แต่ละคนแสดงตำแหน่ง แผนก สิทธิ์ และคะแนน',
+      'ป้าย 👥 xN หมายถึงคนนั้นมีหัวหน้าหลายคน',
+      'Admin แนบรูปผังองค์กรได้ แตะที่รูปเพื่อดูขนาดเต็ม'
+    ]
+  },
+  deductions: {
+    intro: 'ประวัติการตัดคะแนนพนักงานทั้งหมด',
+    items: [
+      'กด "⚠️ ตัดคะแนน" เลือกพนักงาน ใส่จำนวน หมวดหมู่ และเหตุผล (จำเป็นต้องระบุ)',
+      'ใช้ "👁 ดูตัวอย่าง" เพื่อดูคะแนนก่อน/หลังตัดก่อนยืนยัน',
+      'ตารางแสดงผู้ตัด จำนวนที่ตัดจริง เหตุผล และวันที่ กรองตามพนักงานได้'
+    ],
+    tip: 'การตัดคะแนนมีผลทันทีและถูกบันทึกไว้ใน Audit Log'
+  },
+  reports: {
+    intro: 'รายงานสรุปงานตามช่วงวันที่ (เฉพาะ Admin)',
+    items: [
+      'เลือกวันที่เริ่ม-สิ้นสุด แล้วกด "ดูรายงาน" เพื่อดูสรุปและรายการงาน',
+      '"Export CSV" ดาวน์โหลดไฟล์เปิดใน Excel ได้ (รองรับภาษาไทย)',
+      '📌 Snapshot รายเดือน: บันทึกคะแนนทุกคน ณ ตอนนี้ไว้เปรียบเทียบย้อนหลัง'
+    ],
+    tip: 'แนะนำให้กดบันทึก Snapshot ตอนปลายเดือนของทุกเดือน'
+  },
+  audit: {
+    intro: 'บันทึกการเปลี่ยนแปลงสำคัญในระบบ (เฉพาะ Admin)',
+    items: [
+      'แสดงว่าใครทำอะไร กับข้อมูลส่วนไหน ค่าก่อน-หลัง และเมื่อไร',
+      'แสดงสูงสุด 500 รายการล่าสุด หน้าละ 20 รายการ',
+      'ปุ่ม "ล้าง Log" ลบประวัติทั้งหมด'
+    ],
+    tip: '⚠️ การล้าง Log ไม่สามารถกู้คืนได้ ควรใช้ด้วยความระมัดระวัง'
+  },
+  profile: {
+    intro: 'จัดการข้อมูลส่วนตัวและการตั้งค่าบัญชี',
+    items: [
+      'กดไอคอน 📷 ที่รูปโปรไฟล์เพื่อเปลี่ยนรูป',
+      'แก้ไขชื่อ ตำแหน่ง เบอร์โทร แล้วกดบันทึก',
+      'เปลี่ยนรหัสผ่าน: ต้องใส่รหัสเดิม และรหัสใหม่อย่างน้อย 6 ตัว',
+      'เปิดการแจ้งเตือนผ่านเบราว์เซอร์ เพื่อรับเรื่องด่วน (งานเกินกำหนด/ถูกตีกลับ)'
+    ],
+    tip: 'บน iPhone ต้อง "เพิ่มไปหน้าจอโฮม" ก่อน จึงจะรองรับการแจ้งเตือน'
+  }
+};
+function openPageHelp() {
+  const h = PAGE_HELP[currentPage];
+  document.getElementById('page-help-title').textContent = t('page.' + currentPage) || 'คำอธิบายหน้านี้';
+  document.getElementById('page-help-body').innerHTML = h ? `
+    <div class="help-sec"><p><strong>${h.intro}</strong></p></div>
+    <div class="help-sec"><h4>วิธีใช้งาน</h4><ul>${h.items.map(i => `<li>${i}</li>`).join('')}</ul></div>
+    ${h.tip ? `<div class="help-tip">💡 ${h.tip}</div>` : ''}`
+    : `<div class="empty-state"><p>ยังไม่มีคำอธิบายสำหรับหน้านี้</p></div>`;
+  openModal('modal-page-help');
+}
 /* ══════════════════ STARTUP ══════════════════ */
 (async function init() {
   showLoading();
