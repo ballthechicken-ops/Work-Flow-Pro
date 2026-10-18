@@ -1339,7 +1339,7 @@ function buildLayout() {
   const isAdminUser = isAdmin(); const isManagerUser = isManager();
   const roleDisplay = () => isAdminUser ? t('role.admin') : (currentUser.role === 'Manager' ? t('role.manager') : t('role.user'));
   document.getElementById('sidebar').innerHTML = `
-    <div class="sidebar-header"><div class="sidebar-logo-icon">📋</div><div><div class="sidebar-title">WorkFlow Pro<span class="version-badge">v3.0</span></div><div class="sidebar-sub">Supabase Edition</div></div></div>
+    <div class="sidebar-header"><div class="sidebar-logo-icon">📋</div><div><div class="sidebar-title">WorkFlow Pro<span class="version-badge">v5.0</span></div><div class="sidebar-sub">Supabase Edition</div></div></div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">${currentLang === 'th' ? 'หลัก' : 'Main'}</div>
       <div class="nav-item active" onclick="navigate('dashboard')" data-page="dashboard"><span class="nav-icon">📊</span><span>${t('nav.dashboard')}</span></div>
@@ -3343,6 +3343,7 @@ function openPageHelp() {
   }, 6*60*1000);
 })();
 </script>
-<script src="V4-addon.js?v=1"></script> 
+<script src="V4-addon.js?v=1"></script>
+<script src="v5-addon.js?v=1"></script>
 </body>
 </html>
