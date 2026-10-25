@@ -67,7 +67,7 @@ INDEX = [
  # --- เลย์เอาต์ / โปรไฟล์ -------------------------------------------
  S('<div class="user-name" id="sb-name">${currentUser.fullName}</div>', '<div class="user-name" id="sb-name">${esc(currentUser.fullName)}</div>'),
  S('src="${currentUser.avatar}"', 'src="${esc(currentUser.avatar)}"', None),
- S('${currentUser.fullName.charAt(0).toUpperCase()}', '${esc(currentUser.fullName.charAt(0).toUpperCase())}', None),
+ S(': currentUser.fullName.charAt(0).toUpperCase()}', ': esc(currentUser.fullName.charAt(0).toUpperCase())}', None),
  S("${t('greeting')}, ${currentUser.fullName}! 👋</div>", "${t('greeting')}, ${esc(currentUser.fullName)}! 👋</div>"),
  S('id="profile-fullname">${currentUser.fullName}</div>', 'id="profile-fullname">${esc(currentUser.fullName)}</div>'),
  S("id=\"profile-position\">${currentUser.position || '—'} · ${currentUser.department || '—'}</div>",
@@ -162,13 +162,13 @@ INDEX = [
  S('white-space:pre-line;margin-top:2px;">${n.sub}</div>', 'white-space:pre-line;margin-top:2px;">${esc(n.sub)}</div>'),
 
  # --- PDF -------------------------------------------------------------
- S("'<strong style=\"font-size:14px;color:#0F172A;\">'+tk.title+'</strong>'", "'<strong style=\"font-size:14px;color:#0F172A;\">'+esc(tk.title)+'</strong>'"),
+ S("<strong style=\"font-size:14px;color:#0F172A;\">'+tk.title+'</strong>", "<strong style=\"font-size:14px;color:#0F172A;\">'+esc(tk.title)+'</strong>"),
  S("color:#64748B;\">'+cleanDesc+'</div>'", "color:#64748B;\">'+esc(cleanDesc)+'</div>'"),
  S("border-radius:4px;\">'+rejectNote+'</div>'", "border-radius:4px;\">'+esc(rejectNote)+'</div>'"),
  S("<div style=\"font-weight:600;\">'+getUserName(tk.assignedTo)+'</div>", "<div style=\"font-weight:600;\">'+esc(getUserName(tk.assignedTo))+'</div>"),
  S("(สร้างโดย: '+getUserName(tk.createdBy)+')", "(สร้างโดย: '+esc(getUserName(tk.createdBy))+')"),
- S("'<img src=\"'+beforeImgs[b]+'\"", "'<img src=\"'+esc(beforeImgs[b])+'\""),
- S("'<img src=\"'+doneImgs[d]+'\"", "'<img src=\"'+esc(doneImgs[d])+'\""),
+ S("<img src=\"'+beforeImgs[b]+'\"", "<img src=\"'+esc(beforeImgs[b])+'\""),
+ S("<img src=\"'+doneImgs[d]+'\"", "<img src=\"'+esc(doneImgs[d])+'\""),
 
  # --- ลดการดึงข้อมูลเกินจำเป็น ---------------------------------------
  S("const { data, error } = await supabase.from('users').select('*'); if (error) throw error;",
