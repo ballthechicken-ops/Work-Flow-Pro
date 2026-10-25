@@ -1,0 +1,39 @@
+name: Apply v6 patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: 'โฟลเดอร์ที่มี index.html (ถ้าอยู่ที่รากของ repo ให้ใช้ . )'
+        default: '.'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    env:
+      FOLDER: ${{ inputs.folder }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run patch
+        run: python3 tools/patch_all.py "$FOLDER"
+
+      - name: Push result to new branch
+        run: |
+          cp "$FOLDER"/patched/* "$FOLDER"/
+          rm -rf "$FOLDER"/patched
+          if [ -f "$FOLDER/V4-addon.js" ]; then git rm -f "$FOLDER/V4-addon.js"; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b v6-patch
+          git add -A "$FOLDER"
+          git commit -m "Apply WorkFlow Pro v6 patch"
+          git push -f origin v6-patch
