@@ -1,9 +1,9 @@
-<!-- force redeploy -->
 <!DOCTYPE html>
+<!-- force redeploy -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WorkFlow Pro</title>
   <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('wf_theme')||'light')</script>
   <link rel="manifest" href="manifest.json" />
@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WorkFlow Pro" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -357,8 +357,6 @@
     .help-sec ul { list-style:disc; padding-left:20px; }
     .help-tip { background:#ECFDF5; border:1px solid #6EE7B7; border-radius:10px; padding:10px 14px; font-size:.82rem; color:#065F46; }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -393,7 +391,7 @@
   <div class="login-card">
     <div class="login-logo">
       <div class="logo-icon">📋</div>
-      <div><div class="logo-text">WorkFlow Pro<span class="version-badge">NEW v3.0</span></div><div class="logo-sub" id="login-sub-text">ระบบบริหารจัดการงานและทีมงาน</div></div>
+      <div><div class="logo-text">WorkFlow Pro<span class="version-badge">NEW v6.0</span></div><div class="logo-sub" id="login-sub-text">ระบบบริหารจัดการงานและทีมงาน</div></div>
     </div>
     <div class="login-title" id="login-title">เข้าสู่ระบบ</div>
     <div class="login-sub" id="login-sub">กรุณากรอกข้อมูลเพื่อเข้าใช้งานระบบ</div>
@@ -740,6 +738,15 @@ let calMonth = new Date().getMonth();
 
 const isAdmin   = () => currentUser && currentUser.role === 'Admin';
 const isManager = () => currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Manager');
+/* v6: ตัวช่วยความปลอดภัย + วันที่ท้องถิ่น */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const safeUrl = u => /^https:\/\//i.test(String(u || '')) ? String(u) : '#';
+function localDayOf(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).replace(' ', 'T'));
+  if (isNaN(d)) return String(iso).substring(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 /* ══════════════════ MAPPERS (snake_case DB -> camelCase ที่ UI เดิมใช้) ══════════════════ */
 function mapTask(r) {
@@ -856,7 +863,7 @@ async function _dispatchAPI(action, payload) {
     }
     case 'REJECT_TASK': { const { error } = await supabase.rpc('reject_task', { p_task_id: payload.id, p_reason: payload.reason || '' }); if (error) throw error; return { success:true }; }
     case 'GET_USERS': {
-      const { data, error } = await supabase.from('users').select('*'); if (error) throw error;
+      const { data, error } = await supabase.from('users').select('id, username, full_name, position, department, role, manager_id, phone, points, language_pref, avatar, is_active'); if (error) throw error;
       const { data: mgrRows } = await supabase.from('user_managers').select('user_id, manager_id');
       const mgrMap = {}; (mgrRows||[]).forEach(r => { (mgrMap[r.user_id] = mgrMap[r.user_id]||[]).push(r.manager_id); });
       return { success:true, data:(data||[]).map(u => mapUser(u, { managerIds: mgrMap[u.id] || [] })) };
@@ -900,7 +907,7 @@ async function _dispatchAPI(action, payload) {
       return { success:false, error: currentLang==='th' ? 'ไม่รองรับการลบผู้ใช้ถาวร (ป้องกันข้อมูลงานเก่าเสียหาย) กรุณาใช้ปุ่ม "ปิดใช้งาน" แทน' : 'Permanent deletion is not supported. Please use "Deactivate" instead.' };
     }
     case 'GET_ORG': {
-      const { data, error } = await supabase.from('users').select('*'); if (error) throw error;
+      const { data, error } = await supabase.from('users').select('id, username, full_name, position, department, role, manager_id, phone, points, language_pref, avatar, is_active'); if (error) throw error;
       const { data: mgrRows } = await supabase.from('user_managers').select('user_id, manager_id');
       const mgrMap = {}; (mgrRows||[]).forEach(r => { (mgrMap[r.user_id] = mgrMap[r.user_id]||[]).push(r.manager_id); });
       return { success:true, data:(data||[]).map(u => mapUser(u, { managerIds: mgrMap[u.id] || [] })) };
@@ -938,12 +945,12 @@ async function _dispatchAPI(action, payload) {
       const { data, error } = await supabase.from('rewards').select('*').order('created_at', { ascending:false });
       if (error) throw error;
       const rewards = (data||[]).map(mapReward);
-      for (const r of rewards) {
+      await Promise.all(rewards.map(async r => {
         try {
           const { data: prog } = await supabase.rpc('reward_progress', { p_reward_id: r.id, p_user_id: currentUser.id });
           r.myProgress = prog || 0;
         } catch(e) { r.myProgress = 0; }
-      }
+      }));
       return { success:true, data: rewards };
     }
     case 'CREATE_REWARD': {
@@ -1000,7 +1007,7 @@ async function _dispatchAPI(action, payload) {
 
       // อัตราส่งงานตรงเวลา (นับเฉพาะงานมอบหมายที่เสร็จแล้วและมีกำหนดส่ง)
       const doneAssigned = tasks.filter(t => t.status==='done' && t.source==='assigned' && t.deadline && t.completedAt);
-      const onTimeCount = doneAssigned.filter(t => t.completedAt.substring(0,10) <= t.deadline).length;
+      const onTimeCount = doneAssigned.filter(t => localDayOf(t.completedAt) <= t.deadline).length;
       const onTimeRate = doneAssigned.length ? Math.round((onTimeCount/doneAssigned.length)*100) : null;
 
       // งานใกล้ครบกำหนดใน 7 วันข้างหน้า
@@ -1012,7 +1019,7 @@ async function _dispatchAPI(action, payload) {
         .slice(0,6)
         .map(t => ({ id:t.id, title:t.title, deadline:t.deadline, priority:t.priority, assignedTo:t.assignedTo }));
 
-      const recentTasks = tasks.slice(-8).reverse().map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
+      const recentTasks = [...tasks].sort((a,b) => b.id - a.id).slice(0,8).map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
 
       // คะแนน EXP ของการ์ด "ระดับขั้นพนักงาน" แสดงเป็นของผู้ใช้ที่ login อยู่เสมอ ไม่ผูกกับตัวกรองที่เลือกดู
       const { data: me } = await supabase.from('users').select('points').eq('id', currentUser.id).single();
@@ -1074,8 +1081,8 @@ async function _dispatchAPI(action, payload) {
         completed_at: t.completed_at, approved_by: t.approved_by ? (userMap[t.approved_by]||t.approved_by) : '', approved_at: t.approved_at
       }));
       const summary = {
-        total: tasks.length, done: tasks.filter(t=>t.status==='done').length, pending: tasks.filter(t=>t.status==='pending').length,
-        overdue: tasks.filter(t=>t.status==='overdue').length, cancelled: tasks.filter(t=>t.status==='cancelled').length,
+        total: tasks.length, done: tasks.filter(t=>t.status==='done').length, pending: tasks.filter(t=>t.status==='pending' && !(t.deadline && t.deadline < todayStr())).length,
+        overdue: tasks.filter(t=>t.deadline && t.deadline < todayStr() && !['done','cancelled','rejected'].includes(t.status)).length, cancelled: tasks.filter(t=>t.status==='cancelled').length,
         rejected: tasks.filter(t=>t.status==='rejected').length, selfLog: tasks.filter(t=>t.source==='self').length,
         totalPoints: tasks.filter(t=>t.status==='done').reduce((s,t)=>s+(t.points||0),0),
       };
@@ -1176,7 +1183,8 @@ function toast(msg, type = 'info', dur = 3200) {
   const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  const safeMsg = String(msg ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  el.innerHTML = `<span>${icons[type]}</span><span>${safeMsg}</span>`;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), dur);
 }
@@ -1206,9 +1214,11 @@ function getUserName(id) { if (!id) return '-'; const u = usersCache.find(x => x
 function avatarHtml(id, size) {
   size = size || 28;
   const u = usersCache.find(x => x.id == id);
-  const initial = u ? u.fullName.charAt(0).toUpperCase() : '?';
-  if (u && u.avatar) return `<img src="${u.avatar}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border);" onerror="this.outerHTML='<div style=\\'width:${size}px;height:${size}px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.42)}px;font-weight:700;flex-shrink:0;\\'>${initial}</div>'" />`;
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.42)}px;font-weight:700;flex-shrink:0;">${initial}</div>`;
+  const raw = u ? String(u.fullName || '?').charAt(0).toUpperCase() : '?';
+  const initial = /[<>&"'\\`]/.test(raw) ? '?' : raw;
+  const box = `width:${size}px;height:${size}px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.42)}px;font-weight:700;flex-shrink:0;`;
+  if (u && u.avatar && isValidImage(u.avatar)) return `<img src="${esc(u.avatar)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border);" onerror="this.outerHTML='<div style=\\'${box}\\'>${initial}</div>'" />`;
+  return `<div style="${box}">${initial}</div>`;
 }
 function isValidImage(val) { if (!val) return false; const s = String(val); return s.startsWith('data:image') || s.startsWith('https://'); }
 function fixDriveUrl(url) { return url; }
@@ -1222,8 +1232,8 @@ function parseLocalDate(dateStr) {
   return new Date(y, m-1, d);
 }
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
-document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) { e.target.classList.remove('open'); document.body.style.overflow = ''; } });
+function closeModal(id) { document.getElementById(id).classList.remove('open'); if (!document.querySelector('.modal-overlay.open')) document.body.style.overflow = ''; }
+document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) { closeModal(e.target.id); } });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.getElementById('login-page').classList.contains('active')) doLogin(); });
 function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox-modal').classList.add('open'); }
 function closeLightbox() { document.getElementById('lightbox-modal').classList.remove('open'); setTimeout(() => { document.getElementById('lightbox-img').src = ''; }, 200); }
@@ -1359,9 +1369,9 @@ function buildLayout() {
     <div class="sidebar-footer">
       <div class="user-info">
         <div class="user-avatar" id="sb-avatar" style="${currentUser.avatar ? 'background:transparent;padding:0;overflow:hidden;' : ''}">
-          ${currentUser.avatar ? `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />` : currentUser.fullName.charAt(0).toUpperCase()}
+          ${currentUser.avatar ? `<img src="${esc(currentUser.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />` : esc(currentUser.fullName.charAt(0).toUpperCase())}
         </div>
-        <div><div class="user-name" id="sb-name">${currentUser.fullName}</div><div class="user-role">${roleDisplay()}</div></div>
+        <div><div class="user-name" id="sb-name">${esc(currentUser.fullName)}</div><div class="user-role">${roleDisplay()}</div></div>
       </div>
       <button class="btn-logout" onclick="logout()"><span>🚪</span><span>${t('btn.logout')}</span></button>
     </div>`;
@@ -1385,7 +1395,7 @@ function buildPagesHTML() {
   return `
   <div class="page active" id="page-dashboard">
     <div class="page-header">
-      <div><div class="page-title" id="db-greeting">${t('greeting')}, ${currentUser.fullName}! 👋</div><div class="page-sub" id="db-date"></div></div>
+      <div><div class="page-title" id="db-greeting">${t('greeting')}, ${esc(currentUser.fullName)}! 👋</div><div class="page-sub" id="db-date"></div></div>
       <button class="btn btn-primary" onclick="openNewTaskModal()">${t('dash.createTask')}</button>
     </div>
     <div class="notif-tabs" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;">
@@ -1638,18 +1648,18 @@ function buildPagesHTML() {
     <div class="profile-hero">
       <div style="position:relative;flex-shrink:0">
         <div class="profile-avatar-lg" id="profile-avatar-lg" style="${currentUser.avatar ? 'background:transparent;padding:0;overflow:hidden;' : ''}">
-          ${currentUser.avatar ? `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />` : currentUser.fullName.charAt(0).toUpperCase()}
+          ${currentUser.avatar ? `<img src="${esc(currentUser.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />` : esc(currentUser.fullName.charAt(0).toUpperCase())}
         </div>
         <label for="avatar-upload" title="เปลี่ยนรูปโปรไฟล์" style="position:absolute;bottom:-2px;right:-2px;width:28px;height:28px;background:var(--secondary);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid #1E3A8A;font-size:.75rem;">📷</label>
         <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)" />
       </div>
-      <div><div class="profile-name" id="profile-fullname">${currentUser.fullName}</div><div class="profile-pos" id="profile-position">${currentUser.position || '—'} · ${currentUser.department || '—'}</div><span class="badge badge-navy">${isAdminUser ? t('role.admin') : (currentUser.role === 'Manager' ? t('role.manager') : t('role.user'))}</span></div>
+      <div><div class="profile-name" id="profile-fullname">${esc(currentUser.fullName)}</div><div class="profile-pos" id="profile-position">${esc(currentUser.position || '—')} · ${esc(currentUser.department || '—')}</div><span class="badge badge-navy">${isAdminUser ? t('role.admin') : (currentUser.role === 'Manager' ? t('role.manager') : t('role.user'))}</span></div>
     </div>
     <div class="grid-2">
       <div class="card"><div class="card-header">👤 ข้อมูลโปรไฟล์</div><div class="card-body">
-        <div class="input-group"><label class="input-label">${t('label.fullName').replace(' *','')}</label><input type="text" class="input-field" id="profile-edit-name" value="${currentUser.fullName}" /></div>
-        <div class="input-group"><label class="input-label">${t('label.position')}</label><input type="text" class="input-field" id="profile-edit-pos" value="${currentUser.position || ''}" /></div>
-        <div class="input-group"><label class="input-label">เบอร์โทร</label><input type="tel" class="input-field" id="profile-edit-phone" value="${currentUser.phone || ''}" /></div>
+        <div class="input-group"><label class="input-label">${t('label.fullName').replace(' *','')}</label><input type="text" class="input-field" id="profile-edit-name" value="${esc(currentUser.fullName)}" /></div>
+        <div class="input-group"><label class="input-label">${t('label.position')}</label><input type="text" class="input-field" id="profile-edit-pos" value="${esc(currentUser.position || '')}" /></div>
+        <div class="input-group"><label class="input-label">เบอร์โทร</label><input type="tel" class="input-field" id="profile-edit-phone" value="${esc(currentUser.phone || '')}" /></div>
         <button class="btn btn-primary" onclick="saveProfile()">💾 บันทึก</button>
       </div></div>
       <div class="card"><div class="card-header">🔑 เปลี่ยนรหัสผ่าน</div><div class="card-body">
@@ -1660,7 +1670,7 @@ function buildPagesHTML() {
       </div></div>
       <div class="card"><div class="card-header">🔔 การแจ้งเตือนผ่านเบราว์เซอร์</div><div class="card-body">
         <div style="font-size:.85rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6;">
-          เปิดใช้งานเพื่อรับการแจ้งเตือนเรื่องด่วน (งานเกินกำหนด/ถูกตีกลับ) แม้ไม่ได้เปิดแท็บ WorkFlow Pro อยู่ตรงหน้า — ใช้ได้ดีบนคอมพิวเตอร์และ Android ส่วน iPhone ต้อง "เพิ่มไปหน้าจอโฮม" ก่อนถึงจะรองรับ
+          เปิดใช้งานเพื่อรับการแจ้งเตือนเรื่องด่วน (งานเกินกำหนด/ถูกตีกลับ) ขณะที่ยังเปิดแอปค้างไว้ในแท็บหรือพื้นหลัง (ยังไม่รองรับการแจ้งเตือนตอนปิดแอปทั้งหมด) — บน iPhone ต้อง "เพิ่มไปหน้าจอโฮม" ก่อน
         </div>
         <button class="btn btn-primary" onclick="requestBrowserNotifPermission()">🔔 เปิดการแจ้งเตือน</button>
       </div></div>
@@ -1670,12 +1680,12 @@ function buildPagesHTML() {
 
 function populateDropdowns() {
   const catEl = document.getElementById('task-category');
-  if (catEl) catEl.innerHTML = categoriesCache.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  if (catEl) catEl.innerHTML = categoriesCache.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
   const assignEl = document.getElementById('task-assign');
   if (assignEl) {
     let assignable = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || hasManager(u, currentUser.id)) : usersCache.filter(u => u.id === currentUser.id));
     assignable = assignable.filter(u => u.isActive !== false || u.id === currentUser.id);
-    assignEl.innerHTML = assignable.map(u => `<option value="${u.id}">${u.fullName}${u.position ? ' ('+u.position+')' : ''}</option>`).join('');
+    assignEl.innerHTML = assignable.map(u => `<option value="${u.id}">${esc(u.fullName)}${u.position ? ' ('+esc(u.position)+')' : ''}</option>`).join('');
   }
   const mgrListEl = document.getElementById('user-manager-list');
   if (mgrListEl) {
@@ -1683,18 +1693,18 @@ function populateDropdowns() {
     mgrListEl.innerHTML = candidates.length ? candidates.map(u => `
       <label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:.86rem;cursor:pointer;">
         <input type="checkbox" class="user-manager-checkbox" value="${u.id}" style="width:16px;height:16px;flex-shrink:0;" />
-        <span>${u.fullName}${u.position ? ' ('+u.position+')' : ''}</span>
+        <span>${esc(u.fullName)}${u.position ? ' ('+esc(u.position)+')' : ''}</span>
       </label>`).join('') : `<div style="font-size:.82rem;color:var(--text-sub)">ยังไม่มี Manager/Admin ในระบบ</div>`;
   }
   const deductUserEl = document.getElementById('deduct-user-select');
   if (deductUserEl) {
     let deductable = (isAdmin() ? usersCache : usersCache.filter(u => hasManager(u, currentUser.id))).filter(u => u.isActive !== false);
-    deductUserEl.innerHTML = `<option value="">— เลือกพนักงาน —</option>` + deductable.map(u => `<option value="${u.id}" data-points="${u.points||0}">${u.fullName} (${u.points||0} pts)</option>`).join('');
+    deductUserEl.innerHTML = `<option value="">— เลือกพนักงาน —</option>` + deductable.map(u => `<option value="${u.id}" data-points="${u.points||0}">${esc(u.fullName)} (${u.points||0} pts)</option>`).join('');
   }
   const filterUserEl = document.getElementById('deduct-filter-user');
   if (filterUserEl) {
     let filterable = isAdmin() ? usersCache : (isManager() ? usersCache.filter(u => u.id === currentUser.id || hasManager(u, currentUser.id)) : usersCache.filter(u => u.id === currentUser.id));
-    filterUserEl.innerHTML = `<option value="">พนักงานทั้งหมด</option>` + filterable.map(u => `<option value="${u.id}">${u.fullName}</option>`).join('');
+    filterUserEl.innerHTML = `<option value="">พนักงานทั้งหมด</option>` + filterable.map(u => `<option value="${u.id}">${esc(u.fullName)}</option>`).join('');
   }
 }
 
@@ -1729,14 +1739,14 @@ function _computeLocalDashboardStats(tasksArr) {
     else counts.pending++;
   });
   const doneAssigned = tasksArr.filter(t => t.status==='done' && t.source==='assigned' && t.deadline && t.completedAt);
-  const onTimeCount = doneAssigned.filter(t => t.completedAt.substring(0,10) <= t.deadline).length;
+  const onTimeCount = doneAssigned.filter(t => localDayOf(t.completedAt) <= t.deadline).length;
   const onTimeRate = doneAssigned.length ? Math.round((onTimeCount/doneAssigned.length)*100) : null;
   const in7days = new Date(); in7days.setDate(in7days.getDate()+7);
   const in7str = `${in7days.getFullYear()}-${String(in7days.getMonth()+1).padStart(2,'0')}-${String(in7days.getDate()).padStart(2,'0')}`;
   const upcomingDeadlines = tasksArr.filter(t => t.deadline && t.deadline >= today && t.deadline <= in7str && t.status!=='done' && t.status!=='cancelled')
     .sort((a,b) => a.deadline.localeCompare(b.deadline)).slice(0,6)
     .map(t => ({ id:t.id, title:t.title, deadline:t.deadline, priority:t.priority, assignedTo:t.assignedTo }));
-  const recentTasks = tasksArr.slice(-8).reverse().map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
+  const recentTasks = [...tasksArr].sort((a,b) => b.id - a.id).slice(0,8).map(t => ({ id:t.id, title:t.title, priority:t.priority, deadline:t.deadline, status:t.status, points:t.points, assignedTo:t.assignedTo, source:t.source }));
   const byUser = {};
   tasksArr.forEach(t => {
     if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { userId:t.assignedTo, fullName: getUserName(t.assignedTo), pending:0, overdue:0 };
@@ -1791,7 +1801,7 @@ async function loadDashboard() {
         const urgentColor = diff<=1 ? 'var(--danger)' : (diff<=3 ? 'var(--warning)' : 'var(--text-sub)');
         return `<div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)">
           <div style="width:8px;height:8px;border-radius:50%;background:${priorityColor(tk.priority)};flex-shrink:0"></div>
-          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.9rem">${tk.title}</div></div>
+          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.9rem">${esc(tk.title)}</div></div>
           <span style="font-size:.76rem;font-weight:700;color:${urgentColor};flex-shrink:0">${diff<=0?'วันนี้':`อีก ${diff} วัน`}</span>
         </div>`;
       }).join('') : `<div class="empty-state" style="padding:24px"><p style="font-size:.85rem">ไม่มีงานใกล้ครบกำหนดใน 7 วันนี้ 🎉</p></div>`;
@@ -1804,7 +1814,7 @@ async function loadDashboard() {
         document.getElementById('team-overview-list').innerHTML = teamOverview.map(m => `
           <div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)">
             ${avatarHtml(m.userId, 28)}
-            <div style="flex:1;min-width:0;font-weight:600;font-size:.87rem;">${m.fullName}</div>
+            <div style="flex:1;min-width:0;font-weight:600;font-size:.87rem;">${esc(m.fullName)}</div>
             ${m.overdue>0?`<span class="badge badge-red">🔴 เกิน ${m.overdue}</span>`:''}
             ${m.pending>0?`<span class="badge badge-gray">⏳ ${m.pending}</span>`:''}
             ${(m.overdue===0&&m.pending===0)?`<span class="badge badge-green">✅ หมดงานค้าง</span>`:''}
@@ -1817,7 +1827,7 @@ async function loadDashboard() {
       rtEl.innerHTML = recentTasks.length ? recentTasks.map(tk => `
         <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border)">
           <div style="width:8px;height:8px;border-radius:50%;background:${priorityColor(tk.priority)};flex-shrink:0"></div>
-          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tk.title}</div><div style="font-size:.76rem;color:var(--text-sub)">${getUserName(tk.assignedTo)} · ${fmtDate(tk.deadline)}</div></div>
+          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(tk.title)}</div><div style="font-size:.76rem;color:var(--text-sub)">${esc(getUserName(tk.assignedTo))} · ${fmtDate(tk.deadline)}</div></div>
           <span class="badge ${statusBadgeClass(tk.status)}" style="flex-shrink:0">${statusLabel(tk.status)}</span>
           <span style="font-weight:700;color:var(--warning);flex-shrink:0">+${tk.points}pt</span>
         </div>`).join('') : `<div class="empty-state"><div class="empty-icon">📂</div><p>ยังไม่มีงาน</p></div>`;
@@ -1868,8 +1878,8 @@ function drawDonut(stats) {
   const cx=canvas.width/2, cy=canvas.height/2, r=55; ctx.clearRect(0,0,canvas.width,canvas.height);
   let angle=-Math.PI/2;
   segments.forEach(s => { if (!s.val) return; const slice=(s.val/total)*2*Math.PI; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.fillStyle=s.color; ctx.fill(); angle+=slice; });
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.58,0,2*Math.PI); ctx.fillStyle='#fff'; ctx.fill();
-  ctx.fillStyle='#1E293B'; ctx.font='bold 16px Sarabun'; ctx.textAlign='center'; ctx.fillText(stats.total||0, cx, cy+6);
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.58,0,2*Math.PI); ctx.fillStyle=(getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim()||'#fff'); ctx.fill();
+  ctx.fillStyle=(getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()||'#1E293B'); ctx.font='bold 16px Sarabun'; ctx.textAlign='center'; ctx.fillText(stats.total||0, cx, cy+6);
   const legend = document.getElementById('donut-legend');
   if (legend) legend.innerHTML = segments.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:11px;height:11px;border-radius:50%;background:${s.color};flex-shrink:0"></div><span style="font-size:.83rem">${s.label}: <strong>${s.val}</strong></span></div>`).join('');
 }
@@ -1943,7 +1953,7 @@ function renderCategoryChart() {
   const topList = document.getElementById('category-top-list');
   if (topList) {
     const withRate = Object.entries(byCat).map(([name,v]) => ({ name, rate: v.total ? Math.round(v.done/v.total*100) : 0, total:v.total })).filter(x=>x.total>=2).sort((a,b)=>b.rate-a.rate).slice(0,5);
-    topList.innerHTML = withRate.length ? withRate.map(c => `<div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)"><div style="flex:1;font-weight:600;font-size:.87rem;">${c.name}</div><div style="width:100px"><div class="progress-bar-bg" style="height:6px"><div class="progress-bar-fill" style="width:${c.rate}%"></div></div></div><div style="font-weight:800;color:var(--primary);min-width:40px;text-align:right">${c.rate}%</div></div>`).join('') : `<div class="empty-state" style="padding:20px"><p style="font-size:.85rem">ยังไม่มีข้อมูลเพียงพอ</p></div>`;
+    topList.innerHTML = withRate.length ? withRate.map(c => `<div style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)"><div style="flex:1;font-weight:600;font-size:.87rem;">${esc(c.name)}</div><div style="width:100px"><div class="progress-bar-bg" style="height:6px"><div class="progress-bar-fill" style="width:${c.rate}%"></div></div></div><div style="font-weight:800;color:var(--primary);min-width:40px;text-align:right">${c.rate}%</div></div>`).join('') : `<div class="empty-state" style="padding:20px"><p style="font-size:.85rem">ยังไม่มีข้อมูลเพียงพอ</p></div>`;
   }
 }
 function renderCompareChart() {
@@ -1954,7 +1964,7 @@ function renderCompareChart() {
     if (!byUser[t.assignedTo]) byUser[t.assignedTo] = { points:0, count:0, doneOnTime:0, doneAssigned:0 };
     if (t.status==='done') {
       byUser[t.assignedTo].points += (t.points||0); byUser[t.assignedTo].count++;
-      if (t.source==='assigned' && t.deadline && t.completedAt) { byUser[t.assignedTo].doneAssigned++; if (t.completedAt.substring(0,10) <= t.deadline) byUser[t.assignedTo].doneOnTime++; }
+      if (t.source==='assigned' && t.deadline && t.completedAt) { byUser[t.assignedTo].doneAssigned++; if (localDayOf(t.completedAt) <= t.deadline) byUser[t.assignedTo].doneOnTime++; }
     }
   });
   let entries = Object.entries(byUser).map(([uid,v]) => ({ name:getUserName(uid), points:v.points, count:v.count, ontime: v.doneAssigned ? Math.round(v.doneOnTime/v.doneAssigned*100) : null }));
@@ -2044,14 +2054,14 @@ function renderTaskList() {
         <div class="task-card-priority" style="background:${priorityColor(tk.priority)}"></div>
         ${avatarHtml(tk.assignedTo, 36)}
         <div class="task-card-body">
-          <div class="task-card-title">${tk.taskCode ? `<span style="font-family:monospace;font-size:.76rem;color:var(--text-sub);background:var(--bg);padding:2px 7px;border-radius:5px;margin-right:6px;">${tk.taskCode}</span>` : ''}${tk.title}
+          <div class="task-card-title">${tk.taskCode ? `<span style="font-family:monospace;font-size:.76rem;color:var(--text-sub);background:var(--bg);padding:2px 7px;border-radius:5px;margin-right:6px;">${esc(tk.taskCode)}</span>` : ''}${esc(tk.title)}
             ${tk.priority==='Critical'?'<span class="badge badge-critical">⚠️ Critical</span>':''}
             ${tk.source==='self'?`<span class="badge badge-orange">${t('source.self')}</span>`:''}
             ${tk.approvedAt?'<span class="badge badge-green">✅ Approved</span>':''}
             ${tk.source==='self'&&!tk.approvedAt&&tk.status==='done'?'<span class="badge badge-orange">⏳ รออนุมัติคะแนน</span>':''}
           </div>
           <div class="task-card-meta">
-            <span>📂 ${tk.category}</span><span>👤 ${getUserName(tk.assignedTo)}</span><span>📅 ${fmtDate(tk.deadline)}</span>
+            <span>📂 ${esc(tk.category)}</span><span>👤 ${esc(getUserName(tk.assignedTo))}</span><span>📅 ${fmtDate(tk.deadline)}</span>
             ${isValidTime(tk.startTime)?`<span>⏰ ${tk.startTime}</span>`:''}${isValidTime(tk.endTime)?`<span>🔚 ${tk.endTime}</span>`:''}
             <span>⭐ ${tk.points} pt</span>${dueBadge(tk)}
             ${tk.completedAt?`<span style="color:var(--success)">✅ ${fmtDateTime(tk.completedAt)}</span>`:''}
@@ -2093,7 +2103,7 @@ function _renderAdvFilterTags(f) {
     { key:'source', label:v=>v==='self'?'✍️ บันทึกเอง':'📋 มอบหมาย', clear:()=>{document.getElementById('af-source').value='';taskCurrentPage=1;renderTaskList();} },
   ];
   const active = defs.filter(d => f[d.key]);
-  if (tagsEl) tagsEl.innerHTML = active.map(d => `<span class="adv-tag">${d.label(f[d.key])}<button class="adv-tag-remove" onclick="(${d.clear.toString()})()">✕</button></span>`).join('');
+  if (tagsEl) tagsEl.innerHTML = active.map(d => `<span class="adv-tag">${esc(d.label(f[d.key]))}<button class="adv-tag-remove" onclick="(${d.clear.toString()})()">✕</button></span>`).join('');
 }
 
 function setTaskDeadlineQuick(daysFromNow) {
@@ -2234,7 +2244,7 @@ function approveTask(id) {
   } else {
     selfNotice.style.display='none'; assignedNotice.style.display='flex'; pointsGroup.style.display='none'; quickPts.style.display='none';
     document.getElementById('approve-base-pts').textContent = tk.points;
-    const today = todayStr(); const completedAt = tk.completedAt ? tk.completedAt.substring(0,10) : today; const deadline = tk.deadline || '';
+    const today = todayStr(); const completedAt = tk.completedAt ? localDayOf(tk.completedAt) : today; const deadline = tk.deadline || '';
     if (deadline && completedAt > deadline) {
       const diffDays = Math.ceil((parseLocalDate(completedAt) - parseLocalDate(deadline)) / 86400000);
       const penalty = Math.min(50, diffDays*5); const netPts = Math.max(1, Math.floor(tk.points*(1-penalty/100)));
@@ -2323,28 +2333,28 @@ async function viewTaskDetail(id) {
   const renderAttachment = (files) => {
     if (!files.length) return '';
     return files.map(f => `<div class="file-chip" style="margin-top:6px;">
-        <span class="fc-icon">${_fileIcon(f.name||'file')}</span><span class="fc-name">${f.name||'ไฟล์แนบ'}</span>
-        <a href="${f.url}" target="_blank" rel="noopener" download="${f.name||''}" style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด</a>
+        <span class="fc-icon">${_fileIcon(f.name||'file')}</span><span class="fc-name">${esc(f.name||'ไฟล์แนบ')}</span>
+        <a href="${esc(safeUrl(f.url))}" target="_blank" rel="noopener" download="${esc(f.name||'')}" style="padding:6px 14px;background:var(--primary);color:#fff;border-radius:8px;font-size:.78rem;font-weight:600;text-decoration:none;flex-shrink:0;">⬇ เปิด</a>
       </div>`).join('');
   };
   const body = `
-    <div class="detail-hero"><div class="detail-hero-title">${tk.taskCode ? `<div style="font-family:monospace;font-size:.8rem;opacity:.75;margin-bottom:4px;">${tk.taskCode}</div>` : ''}${tk.title}</div>
+    <div class="detail-hero"><div class="detail-hero-title">${tk.taskCode ? `<div style="font-family:monospace;font-size:.8rem;opacity:.75;margin-bottom:4px;">${esc(tk.taskCode)}</div>` : ''}${esc(tk.title)}</div>
       <div class="detail-hero-badges"><span class="detail-hero-badge" style="background:${prio.color}88">${prio.label}</span><span class="detail-hero-badge">${statusLabel(tk.status)}</span><span class="detail-hero-badge">⭐ ${tk.points} pt</span>
       ${tk.source==='self'?`<span class="detail-hero-badge">✍️ บันทึกเอง</span>`:`<span class="detail-hero-badge">📋 มอบหมาย</span>`}</div>
       ${tk.status!=='cancelled'?`<div class="detail-progress-wrap"><div class="detail-progress-label"><span>ความคืบหน้า</span><span>${daysInfo||(tk.status==='done'?'✅':'')}</span></div></div>`:''}
     </div>
     <div class="detail-section"><div class="detail-section-title">ข้อมูลทั่วไป</div>
-      <div class="detail-row"><span class="detail-label">📂 ประเภทงาน</span><span class="detail-value">${tk.category||'—'}</span></div>
-      <div class="detail-row"><span class="detail-label">👤 มอบหมายให้</span><span class="detail-value" style="display:flex;align-items:center;gap:8px;">${avatarHtml(tk.assignedTo,24)}${getUserName(tk.assignedTo)}</span></div>
-      <div class="detail-row"><span class="detail-label">👤 สร้างโดย</span><span class="detail-value" style="display:flex;align-items:center;gap:8px;">${avatarHtml(tk.createdBy,24)}${getUserName(tk.createdBy)}</span></div>
+      <div class="detail-row"><span class="detail-label">📂 ประเภทงาน</span><span class="detail-value">${esc(tk.category||'—')}</span></div>
+      <div class="detail-row"><span class="detail-label">👤 มอบหมายให้</span><span class="detail-value" style="display:flex;align-items:center;gap:8px;">${avatarHtml(tk.assignedTo,24)}${esc(getUserName(tk.assignedTo))}</span></div>
+      <div class="detail-row"><span class="detail-label">👤 สร้างโดย</span><span class="detail-value" style="display:flex;align-items:center;gap:8px;">${avatarHtml(tk.createdBy,24)}${esc(getUserName(tk.createdBy))}</span></div>
       <div class="detail-row"><span class="detail-label">📅 วันที่เริ่ม</span><span class="detail-value">${fmtDate(tk.startDate)}${isValidTime(tk.startTime)?` · ${tk.startTime}`:''}</span></div>
       <div class="detail-row"><span class="detail-label">🏁 กำหนดส่ง</span><span class="detail-value">${fmtDate(tk.deadline)}${isValidTime(tk.endTime)?` · ${tk.endTime}`:''}</span></div>
       ${attachments.length ? `<div class="detail-row"><span class="detail-label">📁 ไฟล์แนบ</span><span class="detail-value" style="flex:1;display:flex;flex-direction:column;gap:0;">${renderAttachment(attachments)}</span></div>` : ''}
     </div>
-    ${tk.desc?`<div class="detail-section"><div class="detail-section-title">รายละเอียด</div><div class="detail-desc-box">${tk.desc}</div></div>`:''}
-    ${beforeImgs.length?`<div class="detail-section"><div class="detail-section-title">📎 รูปก่อนเริ่มงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${beforeImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
-    ${doneImgs.length?`<div class="detail-section"><div class="detail-section-title" style="color:var(--success)">✅ รูปหลักฐานการส่งงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${doneImgs.map(src=>`<img src="${src}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--success);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
-    <div class="detail-section"><div class="detail-section-title">ประวัติสถานะ</div><div class="detail-timeline">${timeline.map(ev=>`<div class="detail-timeline-item ${ev.cls}"><div class="detail-timeline-text">${ev.text}</div><div class="detail-timeline-sub">${ev.sub}</div></div>`).join('')}</div></div>`;
+    ${tk.desc?`<div class="detail-section"><div class="detail-section-title">รายละเอียด</div><div class="detail-desc-box">${esc(tk.desc)}</div></div>`:''}
+    ${beforeImgs.length?`<div class="detail-section"><div class="detail-section-title">📎 รูปก่อนเริ่มงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${beforeImgs.map(src=>`<img src="${esc(src)}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
+    ${doneImgs.length?`<div class="detail-section"><div class="detail-section-title" style="color:var(--success)">✅ รูปหลักฐานการส่งงาน</div><div style="display:flex;gap:8px;flex-wrap:wrap;">${doneImgs.map(src=>`<img src="${esc(src)}" style="width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--success);cursor:pointer;" onclick="openLightbox(this.src)" onerror="this.style.display='none'" />`).join('')}</div></div>`:''}
+    <div class="detail-section"><div class="detail-section-title">ประวัติสถานะ</div><div class="detail-timeline">${timeline.map(ev=>`<div class="detail-timeline-item ${ev.cls}"><div class="detail-timeline-text">${ev.text}</div><div class="detail-timeline-sub">${esc(ev.sub)}</div></div>`).join('')}</div></div>`;
   let actions = `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail')" style="flex:1">ปิด</button>`;
   actions += `<button class="btn btn-secondary" onclick="closeModal('modal-task-detail');duplicateTask(${tk.id})" style="flex:1">📋 คัดลอก</button>`;
   if (canEditTask(tk)) actions += `<button class="btn btn-primary" onclick="closeModal('modal-task-detail');editTask(${tk.id})" style="flex:1">✏️ แก้ไข</button>`;
@@ -2419,7 +2429,7 @@ function showCalDayTasks(ds) {
     ${dayTasks.map(tk => `
       <div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="closeModal('modal-task-detail');viewTaskDetail(${tk.id})">
         ${avatarHtml(tk.assignedTo,28)}
-        <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:.88rem;">${tk.title}</div><div style="font-size:.76rem;color:var(--text-sub);">${getUserName(tk.assignedTo)}</div></div>
+        <div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:.88rem;">${esc(tk.title)}</div><div style="font-size:.76rem;color:var(--text-sub);">${esc(getUserName(tk.assignedTo))}</div></div>
         <span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span>
       </div>`).join('')}
   `;
@@ -2432,7 +2442,7 @@ function showCalDayTasks(ds) {
 async function loadCategories() { try { const res = await callAPI('GET_CATEGORIES'); categoriesCache = res.data || []; renderCategoryList(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
 function renderCategoryList() {
   const el = document.getElementById('category-list'); if (!el) return;
-  el.innerHTML = categoriesCache.length ? categoriesCache.map(c => `<div class="cat-item"><span>📂 ${c.name}</span>${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id})">🗑</button>`:''}</div>`).join('') : `<div class="empty-state"><p>ยังไม่มีประเภทงาน</p></div>`;
+  el.innerHTML = categoriesCache.length ? categoriesCache.map(c => `<div class="cat-item"><span>📂 ${esc(c.name)}</span>${isAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.id})">🗑</button>`:''}</div>`).join('') : `<div class="empty-state"><p>ยังไม่มีประเภทงาน</p></div>`;
 }
 async function addCategory() {
   const name = document.getElementById('new-category-name').value.trim();
@@ -2478,10 +2488,10 @@ async function loadKPI() {
         ${(!isClosed && myProgress>=r.targetPoints) ? `<span class="badge badge-green" style="margin-top:6px">🎉 ถึงเป้าหมายแล้ว!</span>` : ''}`;
       return `<div style="padding:14px 0;border-bottom:1px solid var(--border);${isClosed?'opacity:.55':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div style="font-weight:700">🎁 ${r.name} ${isClosed?'<span class="badge badge-cancel">ปิดรอบแล้ว</span>':'<span class="badge badge-green">🟢 กำลังดำเนินการ</span>'}</div>
+          <div style="font-weight:700">🎁 ${esc(r.name)} ${isClosed?'<span class="badge badge-cancel">ปิดรอบแล้ว</span>':'<span class="badge badge-green">🟢 กำลังดำเนินการ</span>'}</div>
           ${(!isClosed && (isAdmin()||isOwner)) ? `<div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-warning btn-sm" onclick="closeReward(${r.id})">✂️ ตัดรอบ</button><button class="btn btn-danger btn-sm" onclick="deleteReward(${r.id})">🗑</button></div>` : ''}
         </div>
-        <div style="font-size:.83rem;color:var(--text-sub);margin-top:3px">${r.detail||''}</div>
+        <div style="font-size:.83rem;color:var(--text-sub);margin-top:3px">${esc(r.detail||'')}</div>
         <div style="font-size:.76rem;color:var(--text-light);margin-top:2px">${dateLabel}</div>
         ${progressSection}
       </div>`;
@@ -2511,7 +2521,7 @@ async function renderLeaderboard() {
     const anon = document.getElementById('lb-anon')?.checked; const max = users[0]?.points || 1; const medals=['🥇','🥈','🥉'];
     lb.innerHTML = users.map((u,i) => `<div class="lb-row"><div class="rank-badge" style="background:${['#FEF3C7','#F1F5F9','#FEF2F2'][i]||'var(--bg)'};color:${['#D97706','#64748B','#B45309'][i]||'var(--text-sub)'}">${medals[i]||(i+1)}</div>
       ${anon ? '' : avatarHtml(u.id, 32)}
-      <div style="flex:1"><div style="font-weight:600">${anon?`${t('lb.employee')} #${i+1}`:u.fullName}</div><div style="font-size:.76rem;color:var(--text-sub)">${u.department||'—'}</div></div>
+      <div style="flex:1"><div style="font-weight:600">${anon?`${t('lb.employee')} #${i+1}`:esc(u.fullName)}</div><div style="font-size:.76rem;color:var(--text-sub)">${esc(u.department||'—')}</div></div>
       <div style="width:100px"><div class="progress-bar-bg" style="height:6px"><div class="progress-bar-fill" style="width:${Math.round((u.points||0)/max*100)}%"></div></div></div>
       <div style="font-weight:800;color:var(--primary);min-width:60px;text-align:right">${u.points||0} pt</div></div>`).join('') || `<div class="empty-state"><p>ไม่มีข้อมูล</p></div>`;
   } catch(e) { lb.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
@@ -2575,9 +2585,9 @@ async function loadDeductions() {
   try {
     const res = await callAPI('GET_DEDUCTIONS', userId ? { userId } : {}); const data = res.data || [];
     const tbody = document.getElementById('deductions-table-body'); if (!tbody) return;
-    tbody.innerHTML = data.length ? data.map((d,i) => `<tr><td>${i+1}</td><td><strong>${d.userName}</strong></td><td>${d.adminName}</td>
-      <td><strong style="color:var(--danger)">-${d.actual}</strong> pts</td><td><span class="badge badge-orange">${d.category}</span></td>
-      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.reason}">${d.reason}</td>
+    tbody.innerHTML = data.length ? data.map((d,i) => `<tr><td>${i+1}</td><td><strong>${esc(d.userName)}</strong></td><td>${esc(d.adminName)}</td>
+      <td><strong style="color:var(--danger)">-${d.actual}</strong> pts</td><td><span class="badge badge-orange">${esc(d.category)}</span></td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(d.reason)}">${esc(d.reason)}</td>
       <td>${d.before}</td><td><strong style="color:var(--primary)">${d.after}</strong></td><td>${fmtDateTime(d.ts)}</td></tr>`).join('') : `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-sub)">${t('deduct.noHistory')}</td></tr>`;
   } catch(e) { toast(e.message,'error'); }
 }
@@ -2596,11 +2606,11 @@ function resetSalary() { ['sal-base','sal-ot10','sal-ot15','sal-ot20','sal-ot30'
 /* ══════════════════ USERS ══════════════════ */
 async function loadUsers() { try { const res = await callAPI('GET_USERS'); usersCache = res.data || []; renderUsersTable(); populateDropdowns(); } catch(e) { toast(e.message,'error'); } }
 function renderUsersTable() {
-  document.getElementById('users-table-body').innerHTML = usersCache.map((u,i) => `<tr style="${u.isActive===false?'opacity:.55':''}"><td>${i+1}</td><td><div style="display:flex;align-items:center;gap:9px;">${avatarHtml(u.id,30)}<strong>${u.fullName}</strong>${u.isActive===false?'<span class="badge badge-cancel">ปิดใช้งาน</span>':''}</div></td>
-    <td><code style="background:var(--bg);padding:2px 7px;border-radius:5px;font-size:.82rem">${u.username||'-'}</code></td>
-    <td>${u.position||'—'}</td><td>${u.department||'—'}</td>
+  document.getElementById('users-table-body').innerHTML = usersCache.map((u,i) => `<tr style="${u.isActive===false?'opacity:.55':''}"><td>${i+1}</td><td><div style="display:flex;align-items:center;gap:9px;">${avatarHtml(u.id,30)}<strong>${esc(u.fullName)}</strong>${u.isActive===false?'<span class="badge badge-cancel">ปิดใช้งาน</span>':''}</div></td>
+    <td><code style="background:var(--bg);padding:2px 7px;border-radius:5px;font-size:.82rem">${esc(u.username||'-')}</code></td>
+    <td>${esc(u.position||'—')}</td><td>${esc(u.department||'—')}</td>
     <td><span class="badge ${u.role==='Admin'?'badge-navy':(u.role==='Manager'?'badge-orange':'badge-green')}">${u.role==='Manager'?t('role.manager'):u.role}</span></td>
-    <td>${u.phone||'—'}</td><td><strong style="color:var(--primary)">${u.points||0}</strong> <span style="color:var(--text-sub);font-size:.8rem">pt</span></td>
+    <td>${esc(u.phone||'—')}</td><td><strong style="color:var(--primary)">${u.points||0}</strong> <span style="color:var(--text-sub);font-size:.8rem">pt</span></td>
     <td><div style="display:flex;gap:6px">
       <button class="btn btn-secondary btn-sm" onclick="editUser('${u.id}')">✏️</button>
       <button class="btn btn-warning btn-sm" onclick="openDeductModal('${u.id}')">⚠️</button>
@@ -2675,7 +2685,7 @@ async function loadOrg() {
       const children = users.filter(x => hasManager(x, u.id));
       const multiMgrBadge = (u.managerIds && u.managerIds.length > 1) ? `<span class="badge badge-gray" title="มีหัวหน้า ${u.managerIds.length} คน">👥 x${u.managerIds.length}</span>` : '';
       return `<div class="org-node">${avatarHtml(u.id, 38)}
-        <div style="flex:1"><div style="font-weight:700">${u.fullName}</div><div style="font-size:.78rem;color:var(--text-sub)">${u.position||'—'} · ${u.department||'—'}</div></div>
+        <div style="flex:1"><div style="font-weight:700">${esc(u.fullName)}</div><div style="font-size:.78rem;color:var(--text-sub)">${esc(u.position||'—')} · ${esc(u.department||'—')}</div></div>
         <span class="badge ${u.role==='Admin'?'badge-navy':(u.role==='Manager'?'badge-orange':'badge-green')}">${u.role==='Manager'?t('role.manager'):u.role}</span>
         ${multiMgrBadge}
         <span style="font-size:.78rem;color:var(--warning);font-weight:700">${u.points||0} pt</span></div>
@@ -2725,9 +2735,9 @@ function renderReportResult(data) {
     { val:summary.overdue, lbl:t('dash.overdue'), color:'var(--danger)' }, { val:summary.pending, lbl:'รอดำเนินการ', color:'var(--text-sub)' },
     { val:summary.selfLog, lbl:t('source.self'), color:'#C2410C' }, { val:summary.totalPoints+' pt', lbl:t('label.points'), color:'var(--warning)' },
   ].map(s => `<div class="report-summary-card"><div class="report-summary-val" style="color:${s.color}">${s.val}</div><div class="report-summary-lbl">${s.lbl}</div></div>`).join('');
-  document.getElementById('report-tasks-body').innerHTML = tasks.map((tk,i) => `<tr><td>${i+1}</td><td><strong>${tk.title}</strong></td><td>${tk.category}</td>
-    <td><span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span></td><td>${tk.assigned_to}</td><td>${fmtDate(tk.deadline)}</td>
-    <td>${tk.start_time||'-'}</td><td>${tk.end_time||'-'}</td><td>${tk.completed_at?fmtDateTime(tk.completed_at):'-'}</td><td>${tk.approved_by||'-'}</td>
+  document.getElementById('report-tasks-body').innerHTML = tasks.map((tk,i) => `<tr><td>${i+1}</td><td><strong>${esc(tk.title)}</strong></td><td>${esc(tk.category)}</td>
+    <td><span class="badge ${statusBadgeClass(tk.status)}">${statusLabel(tk.status)}</span></td><td>${esc(tk.assigned_to)}</td><td>${fmtDate(tk.deadline)}</td>
+    <td>${tk.start_time||'-'}</td><td>${tk.end_time||'-'}</td><td>${tk.completed_at?fmtDateTime(tk.completed_at):'-'}</td><td>${esc(tk.approved_by||'-')}</td>
     <td><strong>${tk.points}</strong></td><td><span class="badge ${tk.source==='self'?'badge-orange':'badge-blue'}">${t('source.'+tk.source)}</span></td></tr>`).join('') || `<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text-sub)">ไม่มีข้อมูล</td></tr>`;
 }
 async function exportReportCSV() {
@@ -2756,7 +2766,7 @@ async function loadSnapshotHistory() {
     const months = [...new Set(rows.map(r => r.month))].sort().reverse().slice(0,6);
     if (!months.length) { el.innerHTML = `<div class="empty-state"><p>ยังไม่มีประวัติสรุปเดือน</p></div>`; return; }
     el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>เดือน</th><th>พนักงาน</th><th>คะแนนเดือนนั้น</th><th>คะแนนสะสมรวม ณ ตอนนั้น</th></tr></thead><tbody>
-      ${months.map(m => rows.filter(r=>r.month===m).sort((a,b)=>b.monthlyPoints-a.monthlyPoints).slice(0,5).map((r,i) => `<tr><td>${i===0?fmtDate(m):''}</td><td>${getUserName(r.userId)}</td><td><strong style="color:var(--secondary)">${r.monthlyPoints}</strong></td><td>${r.lifetimePoints}</td></tr>`).join('')).join('')}
+      ${months.map(m => rows.filter(r=>r.month===m).sort((a,b)=>b.monthlyPoints-a.monthlyPoints).slice(0,5).map((r,i) => `<tr><td>${i===0?fmtDate(m):''}</td><td>${esc(getUserName(r.userId))}</td><td><strong style="color:var(--secondary)">${r.monthlyPoints}</strong></td><td>${r.lifetimePoints}</td></tr>`).join('')).join('')}
     </tbody></table></div>`;
   } catch(e) { el.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`; }
 }
@@ -2779,7 +2789,7 @@ function renderAuditLogs() {
   const pageLogs = auditLogsCache.slice(start, start+AUDIT_PER_PAGE);
   el.innerHTML = pageLogs.length ? pageLogs.map(l => `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)">
       <div style="width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0">📝</div>
-      <div style="flex:1;min-width:0"><div style="font-weight:600">${l.action} — ${l.target}</div><div style="font-size:.78rem;color:var(--text-sub);margin-top:2px">โดย: ${getUserName(l.userId)}${l.prev?` | ก่อน: <em>${l.prev}</em>`:''}${l.next?` → หลัง: <em>${l.next}</em>`:''}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(l.action)} — ${esc(l.target)}</div><div style="font-size:.78rem;color:var(--text-sub);margin-top:2px">โดย: ${esc(getUserName(l.userId))}${l.prev?` | ก่อน: <em>${esc(l.prev)}</em>`:''}${l.next?` → หลัง: <em>${esc(l.next)}</em>`:''}</div></div>
       <div style="font-size:.75rem;color:var(--text-light);flex-shrink:0;text-align:right">${fmtDateTime(l.ts)}</div></div>`).join('') : `<div class="empty-state"><div class="empty-icon">🔍</div><p>ไม่มี Log</p></div>`;
   let pagerEl = document.getElementById('audit-pagination');
   if (!pagerEl) { document.getElementById('page-audit').insertAdjacentHTML('beforeend', '<div id="audit-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap;"></div>'); pagerEl = document.getElementById('audit-pagination'); }
@@ -2822,7 +2832,7 @@ async function changePassword() {
 }
 function _refreshSidebarAvatar() {
   const el = document.getElementById('sb-avatar'); if (!el) return;
-  if (currentUser.avatar) { el.style.cssText='background:transparent;padding:0;overflow:hidden;'; el.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />`; }
+  if (currentUser.avatar) { el.style.cssText='background:transparent;padding:0;overflow:hidden;'; el.innerHTML = `<img src="${esc(currentUser.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />`; }
   else { el.style.cssText=''; el.textContent = currentUser.fullName.charAt(0).toUpperCase(); }
 }
 async function handleAvatarUpload(input) {
@@ -2915,7 +2925,7 @@ function _fileIcon(name) {
 }
 function _renderFileChips() {
   const el = document.getElementById('file-upload-list'); if (!el) return;
-  el.innerHTML = tempTaskFiles.map((f,i) => `<div class="file-chip"><span class="fc-icon">${_fileIcon(f.name)}</span><span class="fc-name">${f.name}</span><button type="button" class="fc-remove" onclick="removeTaskFile(${i})">✕</button></div>`).join('');
+  el.innerHTML = tempTaskFiles.map((f,i) => `<div class="file-chip"><span class="fc-icon">${_fileIcon(f.name)}</span><span class="fc-name">${esc(f.name)}</span><button type="button" class="fc-remove" onclick="removeTaskFile(${i})">✕</button></div>`).join('');
   document.getElementById('task-link').value = tempTaskFiles.length ? JSON.stringify(tempTaskFiles) : '';
 }
 function removeTaskFile(idx) { tempTaskFiles.splice(idx,1); _renderFileChips(); }
@@ -2974,7 +2984,7 @@ function _appendCapturePreview(base64, previewId) {
 /* ══════════════════ PDF EXPORT ══════════════════ */
 function openPdfExportModal() {
   const now = new Date(); const y=now.getFullYear(); const m=String(now.getMonth()+1).padStart(2,'0');
-  document.getElementById('pdf-date-from').value = `${y}-${m}-01`; document.getElementById('pdf-date-to').value = now.toISOString().split('T')[0];
+  document.getElementById('pdf-date-from').value = `${y}-${m}-01`; document.getElementById('pdf-date-to').value = todayStr();
   const sel = document.getElementById('pdf-staff-filter'); sel.innerHTML = '<option value="">— พนักงานทั้งหมด —</option>';
   usersCache.forEach(u => { const opt=document.createElement('option'); opt.value=u.id; opt.textContent=u.fullName+(u.position?` (${u.position})`:''); sel.appendChild(opt); });
   document.getElementById('pdf-status-filter').value=''; openModal('modal-pdf-export');
@@ -3014,15 +3024,15 @@ async function _buildPDF(tasks, dateFrom, dateTo) {
     var imagesHtml = '';
     if (beforeImgs.length>0 || doneImgs.length>0) {
       imagesHtml += '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">';
-      for (var b=0;b<beforeImgs.length;b++) { imagesHtml += '<div style="border:1px solid #E2E8F0;padding:4px;border-radius:6px;background:#F8FAFC;"><div style="font-size:10px;color:#64748B;margin-bottom:4px;font-weight:600;text-align:center;">อ้างอิง</div><img src="'+beforeImgs[b]+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
-      for (var d=0;d<doneImgs.length;d++) { imagesHtml += '<div style="border:1px solid #10B981;padding:4px;border-radius:6px;background:#ECFDF5;"><div style="font-size:10px;color:#065F46;margin-bottom:4px;font-weight:600;text-align:center;">หลักฐาน</div><img src="'+doneImgs[d]+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
+      for (var b=0;b<beforeImgs.length;b++) { imagesHtml += '<div style="border:1px solid #E2E8F0;padding:4px;border-radius:6px;background:#F8FAFC;"><div style="font-size:10px;color:#64748B;margin-bottom:4px;font-weight:600;text-align:center;">อ้างอิง</div><img src="'+esc(beforeImgs[b])+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
+      for (var d=0;d<doneImgs.length;d++) { imagesHtml += '<div style="border:1px solid #10B981;padding:4px;border-radius:6px;background:#ECFDF5;"><div style="font-size:10px;color:#065F46;margin-bottom:4px;font-weight:600;text-align:center;">หลักฐาน</div><img src="'+esc(doneImgs[d])+'" style="max-width:140px;max-height:100px;border-radius:4px;object-fit:contain;display:block;" /></div>'; }
       imagesHtml += '</div>';
     }
-    rows += '<tr><td style="text-align:center;">'+(i+1)+'</td><td><strong style="font-size:14px;color:#0F172A;">'+tk.title+'</strong>';
-    if (cleanDesc) rows += '<div style="margin-top:4px;font-size:11px;color:#64748B;">'+cleanDesc+'</div>';
-    if (rejectNote) rows += '<div style="display:block;margin-top:6px;color:#DC2626;font-size:11px;background:#FEF2F2;padding:4px 6px;border-radius:4px;">'+rejectNote+'</div>';
+    rows += '<tr><td style="text-align:center;">'+(i+1)+'</td><td><strong style="font-size:14px;color:#0F172A;">'+esc(tk.title)+'</strong>';
+    if (cleanDesc) rows += '<div style="margin-top:4px;font-size:11px;color:#64748B;">'+esc(cleanDesc)+'</div>';
+    if (rejectNote) rows += '<div style="display:block;margin-top:6px;color:#DC2626;font-size:11px;background:#FEF2F2;padding:4px 6px;border-radius:4px;">'+esc(rejectNote)+'</div>';
     rows += imagesHtml + '</td>';
-    rows += '<td><div style="font-weight:600;">'+getUserName(tk.assignedTo)+'</div><div style="font-size:11px;color:#64748B;margin-top:2px;">(สร้างโดย: '+getUserName(tk.createdBy)+')</div></td>';
+    rows += '<td><div style="font-weight:600;">'+esc(getUserName(tk.assignedTo))+'</div><div style="font-size:11px;color:#64748B;margin-top:2px;">(สร้างโดย: '+esc(getUserName(tk.createdBy))+')</div></td>';
     rows += '<td><div>'+(tk.deadline||'-')+'</div>'+(tk.endTime?'<div style="font-size:11px;color:#64748B;">เวลา: '+tk.endTime+'</div>':'')+'</td>';
     rows += '<td style="text-align:center;"><span style="padding:4px 8px;border-radius:12px;font-size:11px;font-weight:700;display:inline-block;'+getStatusStyle(tk.status)+'">'+statusLabel(tk.status)+'</span></td>';
     rows += '<td style="font-size:12px;">'+(tk.completedAt?'<div style="color:#10B981;margin-bottom:2px;">✅ '+tk.completedAt.substring(0,16)+'</div>':'')+(tk.approvedAt?'<div style="color:#F59E0B;">👍 อนุมัติ: '+tk.approvedAt.substring(0,10)+'</div>':'')+'</td></tr>';
@@ -3073,7 +3083,7 @@ function renderNotifList() {
   if (!list.length) { el.innerHTML = `<div class="notif-empty"><div class="notif-empty-icon">✅</div><div style="font-weight:700;margin-bottom:6px">ไม่มีการแจ้งเตือน</div><div style="font-size:.82rem;color:var(--text-sub)">ทุกอย่างเรียบร้อย 👍</div></div>`; return; }
   el.innerHTML = list.map(n => { const unread = !notifRead.includes(n.id);
     return `<div class="notif-item${unread?' unread':''}${n.urgent?' is-urgent':''}" onclick="handleNotifClick('${n.id}')"><div class="notif-icon" style="background:${n.iconBg}">${n.icon}</div>
-      <div class="notif-body"><div class="notif-title${n.urgent?' urgent':''}">${n.title}</div>${n.sub?`<div class="notif-sub">${n.sub}</div>`:''}<div class="notif-time">🕐 ${n.time||''}</div></div>${unread?'<div class="notif-dot"></div>':''}</div>`;
+      <div class="notif-body"><div class="notif-title${n.urgent?' urgent':''}">${esc(n.title)}</div>${n.sub?`<div class="notif-sub">${esc(n.sub)}</div>`:''}<div class="notif-time">🕐 ${n.time||''}</div></div>${unread?'<div class="notif-dot"></div>':''}</div>`;
   }).join('');
 }
 async function buildNotifications() {
@@ -3130,8 +3140,8 @@ async function showUrgentAlertPopup() {
         <div class="urgent-alert-item" onclick="handleNotifClick('${n.id}')">
           <div class="urgent-alert-count">${n.icon}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:.88rem;color:var(--danger);">${n.title}</div>
-            <div style="font-size:.76rem;color:var(--text-sub);white-space:pre-line;margin-top:2px;">${n.sub}</div>
+            <div style="font-weight:700;font-size:.88rem;color:var(--danger);">${esc(n.title)}</div>
+            <div style="font-size:.76rem;color:var(--text-sub);white-space:pre-line;margin-top:2px;">${esc(n.sub)}</div>
           </div>
         </div>`).join('')}
     `;
@@ -3343,7 +3353,9 @@ function openPageHelp() {
   }, 6*60*1000);
 })();
 </script>
-<script src="V4-addon.js?v=1"></script>
-<script src="v5-addon.js?v=1"></script>
+<script src="v4-addon.js?v=2"></script>
+<script src="v5-addon.js?v=2"></script>
+<script src="v6-addon.js?v=1"></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }</script>
 </body>
 </html>

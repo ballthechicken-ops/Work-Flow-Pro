@@ -21,6 +21,7 @@ const me = () => currentUser && currentUser.id;
 const DAYN = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 
 const WF5 = window.WF5 = {};
+window.WF_KB_V5 = true;
 const V5 = { ach: null, achAt: 0, achDb: true, achFilter: 'all', charts: {}, ins: {}, insScope: null, insDays: 90,
   wlOpen: new Set(), rec: { wd: null, dom: null }, recRows: [], drag: null, noClick: 0, busy: new Set(), recLast: 0, gWait: false, gTimer: 0, qaItems: [] };
 
@@ -263,6 +264,7 @@ function startDrag() {
   const g = d.card.cloneNode(true); g.className = 'kb-card v5-ghost';
   Object.assign(g.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', zIndex: 5000, pointerEvents: 'none', opacity: .92, transform: 'rotate(2deg)', boxShadow: '0 12px 30px rgba(0,0,0,.3)', margin: 0 });
   document.body.appendChild(g); d.ghost = g; d.started = true; d.card.classList.add('dragging'); document.body.classList.add('v5-dragging');
+  document.addEventListener('touchmove', blockTouch, { passive: false });
   if (navigator.vibrate) navigator.vibrate(15);
 }
 function onDown(e) {
@@ -291,17 +293,18 @@ const endDrag = e => {
   V5.noClick = Date.now();
   const col = document.elementFromPoint(e.clientX, e.clientY)?.closest('.kb-col');
   d.ghost.remove(); d.card.classList.remove('dragging'); document.body.classList.remove('v5-dragging');
+  document.removeEventListener('touchmove', blockTouch);
   document.querySelectorAll('.kb-col.over').forEach(c => c.classList.remove('over'));
   if (e.type !== 'pointercancel') dropCard(d, col && col.dataset.k);
 };
 document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
-document.addEventListener('touchmove', e => { if (V5.drag && V5.drag.started && e.cancelable) e.preventDefault(); }, { passive: false });
+const blockTouch = e => { if (e.cancelable) e.preventDefault(); };   // v6: ผูกเฉพาะตอนลากจริง
 
 function enhanceKanban() {
   const board = $('kanban-board'); if (!board || board.style.display === 'none') return;
   const old = board.querySelector('.kb-wrap'); if (!old) return;
   const sl = old.scrollLeft;
-  board.innerHTML = board.innerHTML;                               // ล้าง handler HTML5-drag เดิมของ v4 (ใช้ไม่ได้บนมือถือ/ไม่อัปเดตทันที)
+  /* v6: ไม่ต้อง re-render ซ้ำแล้ว (v4 ไม่ผูก handler เมื่อมี v5) */                               // ล้าง handler HTML5-drag เดิมของ v4 (ใช้ไม่ได้บนมือถือ/ไม่อัปเดตทันที)
   const w = board.querySelector('.kb-wrap'); if (w) w.scrollLeft = sl;
   board.querySelectorAll('.kb-card').forEach(c => {
     const col = c.closest('.kb-col').dataset.k, can = c.getAttribute('draggable') === 'true'; c.removeAttribute('draggable');
@@ -660,7 +663,7 @@ document.addEventListener('keydown', e => {
   if (V5.gWait) {
     V5.gWait = false; clearTimeout(V5.gTimer); e.preventDefault();
     const k = c.replace('Key', '').toLowerCase();
-    if (GO[k] && !(k === 's' && false)) navigate(GO[k]);
+    if (GO[k]) navigate(GO[k]);
     else if (k === 'w' && isManager()) { navigate('dashboard'); setTimeout(() => document.querySelector('[data-dashtab="workload"]')?.click(), 60); }
     else if (k === 'i') { navigate('dashboard'); setTimeout(() => document.querySelector('[data-dashtab="insight"]')?.click(), 60); }
     else if (k === 'r') WF5.openRec();

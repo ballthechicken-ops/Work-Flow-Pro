@@ -160,13 +160,16 @@ window._dispatchAPI = async function (action, payload = {}) {
   if (action === 'GET_TASKS') return getTasks(payload.force);
   if (action === 'GET_DASHBOARD_BUNDLE') return dashBundle(payload);
   const subs = (action === 'CREATE_TASK' || action === 'UPDATE_TASK') ? V4.pendingSubs : null;
+  if (subs) V4.pendingSubs = null;   // v6: ใช้ครั้งเดียว กันไปติดกับงานอื่น (เช่น งานซ้ำที่สร้างอัตโนมัติ)
   const r = await _origDispatch(action, payload);
   if (r && r.success) {
     for (const [key, list] of Object.entries(INVAL)) if (list.includes(action)) delete V4.cache[key];
     if (action === 'DELETE_TASK') { V4.tasks.map.delete(payload.id); V4.tasks.rows = (V4.tasks.rows || []).filter(t => t.id !== payload.id); }
     if (subs) {
-      if (action === 'UPDATE_TASK') await saveSubs(payload.id, subs);
-      else if (subs.length && r.id) await saveSubs(r.id, subs);
+      try {
+        if (action === 'UPDATE_TASK') await saveSubs(payload.id, subs);
+        else if (subs.length && r.id) await saveSubs(r.id, subs);
+      } catch (e) { toast('บันทึกงานแล้ว แต่บันทึกรายการย่อยไม่สำเร็จ: ' + e.message, 'warning', 6000); }
     }
   }
   return r;
@@ -316,6 +319,7 @@ function renderKanban() {
     const list = c.k === 'done' ? g.done.slice(0, 20) : g[c.k];
     return `<div class="kb-col" data-k="${c.k}"><div class="kb-head"><span>${c.t}</span><span class="kb-count" style="background:${c.c}">${g[c.k].length}</span></div>${list.map(t => card(t, c.k)).join('') || '<div style="text-align:center;color:var(--text-light);font-size:.8rem;padding:20px 0">—</div>'}${c.k === 'done' && g.done.length > 20 ? '<div style="text-align:center;font-size:.74rem;color:var(--text-sub)">แสดง 20 งานล่าสุด</div>' : ''}</div>`;
   }).join('')}</div>`;
+  if (window.WF_KB_V5) return;   // v6: ถ้ามี v5 ให้ v5 ผูก event เอง ไม่วาด/ผูกซ้ำ
   el.querySelectorAll('.kb-card').forEach(c => {
     c.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', c.dataset.id); c.classList.add('dragging'); });
     c.addEventListener('dragend', () => c.classList.remove('dragging'));
